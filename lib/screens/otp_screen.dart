@@ -61,6 +61,21 @@ class _OtpScreenState extends State<OtpScreen> {
     try {
       await account.createSession(userId: widget.userId, secret: code);
 
+      final result = await databases.listDocuments(
+        databaseId: '685a90fa0009384c5189',
+        collectionId: '68616ecc00163ed41e57',
+        queries: [Query.equal("\$id", widget.userId)],
+      );
+
+      if (result.total == 0) {
+        await databases.createDocument(
+          databaseId: '685a90fa0009384c5189',
+          collectionId: '68616ecc00163ed41e57',
+          documentId: widget.userId,
+          data: {'name': null},
+        );
+      }
+
       Navigator.pushReplacementNamed(context, '/main');
     } on AppwriteException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
