@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
 import '../appwrite/appwrite.dart';
 
+String databaseId = '685a90fa0009384c5189';
+String completedStatusCollectionID = '686777d300169b27b237';
+String usersCollectionID = '68616ecc00163ed41e57';
+
 class OtpScreen extends StatefulWidget {
   final String phone;
   final String userId;
@@ -50,9 +54,12 @@ class _OtpScreenState extends State<OtpScreen> {
   Future<void> _verifyOtp() async {
     final code = _otpController.text.trim();
     if (code.length != 6) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Enter a 6-digit OTP')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Enter a 6-digit OTP'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
       return;
     }
 
@@ -61,25 +68,43 @@ class _OtpScreenState extends State<OtpScreen> {
     try {
       await account.createSession(userId: widget.userId, secret: code);
 
-      final result = await databases.listDocuments(
-        databaseId: '685a90fa0009384c5189',
-        collectionId: '68616ecc00163ed41e57',
+      final userCollectionResults = await databases.listDocuments(
+        databaseId: databaseId,
+        collectionId: usersCollectionID,
         queries: [Query.equal("\$id", widget.userId)],
       );
 
-      if (result.total == 0) {
+      final completionStatusCollectionResult = await databases.listDocuments(
+        databaseId: databaseId,
+        collectionId: completedStatusCollectionID,
+        queries: [Query.equal("user", widget.userId)],
+      );
+
+      if (userCollectionResults.total == 0) {
         await databases.createDocument(
-          databaseId: '685a90fa0009384c5189',
-          collectionId: '68616ecc00163ed41e57',
+          databaseId: databaseId,
+          collectionId: usersCollectionID,
           documentId: widget.userId,
           data: {'name': null},
+        );
+      }
+
+      if (completionStatusCollectionResult.total == 0) {
+        await databases.createDocument(
+          databaseId: databaseId,
+          collectionId: completedStatusCollectionID,
+          documentId: ID.unique(),
+          data: {'user': widget.userId},
         );
       }
 
       Navigator.pushReplacementNamed(context, '/main');
     } on AppwriteException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'OTP verification failed')),
+        SnackBar(
+          content: Text(e.message ?? 'OTP verification failed'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
       );
     } finally {
       setState(() => _isVerifying = false);
@@ -93,13 +118,19 @@ class _OtpScreenState extends State<OtpScreen> {
         userId: widget.userId,
         phone: widget.phone,
       );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('OTP resent')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('OTP resent'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+        ),
+      );
       _startTimer();
     } on AppwriteException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Failed to resend OTP')),
+        SnackBar(
+          content: Text(e.message ?? 'Failed to resend OTP'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
       );
     }
   }
@@ -107,8 +138,9 @@ class _OtpScreenState extends State<OtpScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: colorScheme.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -120,23 +152,26 @@ class _OtpScreenState extends State<OtpScreen> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF6A85F1), Color(0xFF1FD1F9)],
+                    gradient: LinearGradient(
+                      colors: [
+                        colorScheme.primary,
+                        colorScheme.secondary,
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.blue.withOpacity(0.15),
+                        color: colorScheme.primary.withOpacity(0.15),
                         blurRadius: 24,
                         offset: const Offset(0, 8),
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.lock_outline_rounded,
                     size: 48,
-                    color: Colors.white,
+                    color: colorScheme.onPrimary,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -144,14 +179,14 @@ class _OtpScreenState extends State<OtpScreen> {
                   "Verify your phone",
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF222B45),
+                    color: colorScheme.onBackground,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   "Code sent to",
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[600],
+                    color: colorScheme.onBackground.withOpacity(0.6),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -159,7 +194,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   widget.phone,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF222B45),
+                    color: colorScheme.onBackground,
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -171,11 +206,11 @@ class _OtpScreenState extends State<OtpScreen> {
                   ),
                   margin: const EdgeInsets.symmetric(horizontal: 24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black12,
+                        color: colorScheme.shadow.withOpacity(0.08),
                         blurRadius: 16,
                         offset: const Offset(0, 8),
                       ),
@@ -186,18 +221,18 @@ class _OtpScreenState extends State<OtpScreen> {
                     keyboardType: TextInputType.number,
                     maxLength: 6,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: theme.textTheme.headlineMedium?.copyWith(
                       fontSize: 28,
                       letterSpacing: 18,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF222B45),
+                      color: colorScheme.onSurface,
                     ),
                     decoration: InputDecoration(
                       counterText: "",
                       border: InputBorder.none,
                       hintText: "● ● ● ● ● ●",
                       hintStyle: TextStyle(
-                        color: Colors.grey[300],
+                        color: colorScheme.onSurface.withOpacity(0.12),
                         fontSize: 28,
                         letterSpacing: 18,
                       ),
@@ -214,12 +249,12 @@ class _OtpScreenState extends State<OtpScreen> {
                     borderRadius: BorderRadius.circular(50),
                     gradient: LinearGradient(
                       colors: _isVerifying
-                          ? [Colors.grey, Colors.grey]
-                          : [const Color(0xFF6A85F1), const Color(0xFF1FD1F9)],
+                          ? [colorScheme.onSurface.withOpacity(0.2), colorScheme.onSurface.withOpacity(0.2)]
+                          : [colorScheme.primary, colorScheme.secondary],
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6A85F1).withOpacity(0.18),
+                        color: colorScheme.primary.withOpacity(0.18),
                         blurRadius: 16,
                         offset: const Offset(0, 8),
                       ),
@@ -232,18 +267,18 @@ class _OtpScreenState extends State<OtpScreen> {
                       onTap: _isVerifying ? null : _verifyOtp,
                       child: Center(
                         child: _isVerifying
-                            ? const SizedBox(
+                            ? SizedBox(
                                 height: 28,
                                 width: 28,
                                 child: CircularProgressIndicator(
-                                  color: Colors.white,
+                                  color: colorScheme.onPrimary,
                                   strokeWidth: 2.5,
                                 ),
                               )
-                            : const Text(
+                            : Text(
                                 "Verify",
-                                style: TextStyle(
-                                  color: Colors.white,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: colorScheme.onPrimary,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 1.2,
@@ -262,15 +297,18 @@ class _OtpScreenState extends State<OtpScreen> {
                       _canResend
                           ? "Didn't get the code?"
                           : "Resend in $_secondsRemaining s",
-                      style: TextStyle(color: Colors.grey[600], fontSize: 15),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onBackground.withOpacity(0.6),
+                        fontSize: 15,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     TextButton(
                       onPressed: _canResend ? _resendOtp : null,
                       style: TextButton.styleFrom(
                         foregroundColor: _canResend
-                            ? const Color(0xFF6A85F1)
-                            : Colors.grey[400],
+                            ? colorScheme.primary
+                            : colorScheme.onSurface.withOpacity(0.3),
                         textStyle: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       child: const Text('Resend'),
@@ -283,7 +321,10 @@ class _OtpScreenState extends State<OtpScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: Text(
                     "By verifying, you agree to our Terms & Privacy Policy.",
-                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onBackground.withOpacity(0.3),
+                      fontSize: 13,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),

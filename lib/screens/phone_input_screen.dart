@@ -15,6 +15,27 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _logout();
+  }
+
+  Future<void> _logout() async {
+    try {
+      await account.deleteSession(sessionId: 'current');
+      if (mounted) {
+        // Already on PhoneInputScreen, so no need to navigate.
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Logout failed")),
+        );
+      }
+    }
+  }
+
   Future<void> _sendOtp() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -35,7 +56,10 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
       );
     } on AppwriteException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Failed to send OTP')),
+        SnackBar(
+          content: Text(e.message ?? 'Failed to send OTP'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -45,8 +69,9 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: theme.scaffoldBackgroundColor, // Use theme background
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -58,23 +83,26 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF6A85F1), Color(0xFF1FD1F9)],
+                    gradient: LinearGradient(
+                      colors: [
+                        colorScheme.primary,
+                        colorScheme.secondary,
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.blue.withOpacity(0.15),
+                        color: colorScheme.primary.withOpacity(0.15),
                         blurRadius: 24,
                         offset: const Offset(0, 8),
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.phone_iphone_rounded,
                     size: 48,
-                    color: Colors.white,
+                    color: colorScheme.onPrimary,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -82,14 +110,14 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                   "Enter your phone number",
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF222B45),
+                    color: colorScheme.onBackground,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   "We'll send you a verification code",
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[600],
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7) ?? Colors.grey[600],
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -101,11 +129,11 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                   ),
                   margin: const EdgeInsets.symmetric(horizontal: 24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black12,
+                        color: colorScheme.shadow.withOpacity(0.08),
                         blurRadius: 16,
                         offset: const Offset(0, 8),
                       ),
@@ -116,18 +144,28 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                     child: TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         prefixText: '+91 ',
+                        prefixStyle: theme.textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
                         labelText: 'Phone Number',
+                        labelStyle: theme.textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.primary,
+                        ),
                         border: InputBorder.none,
                         hintText: '10-digit number',
+                        hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurface.withOpacity(0.4),
+                        ),
                         counterText: '',
                       ),
                       maxLength: 10,
-                      style: const TextStyle(
-                        fontSize: 20,
+                      style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w500,
                         letterSpacing: 2,
+                        color: colorScheme.onSurface,
                       ),
                       validator: (v) => v == null || v.length != 10
                           ? 'Enter a valid 10-digit phone'
@@ -145,12 +183,12 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                     borderRadius: BorderRadius.circular(50),
                     gradient: LinearGradient(
                       colors: _isLoading
-                          ? [Colors.grey, Colors.grey]
-                          : [const Color(0xFF6A85F1), const Color(0xFF1FD1F9)],
+                          ? [colorScheme.outline, colorScheme.outline]
+                          : [colorScheme.primary, colorScheme.secondary],
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6A85F1).withOpacity(0.18),
+                        color: colorScheme.primary.withOpacity(0.18),
                         blurRadius: 16,
                         offset: const Offset(0, 8),
                       ),
@@ -163,19 +201,18 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                       onTap: _isLoading ? null : _sendOtp,
                       child: Center(
                         child: _isLoading
-                            ? const SizedBox(
+                            ? SizedBox(
                                 height: 28,
                                 width: 28,
                                 child: CircularProgressIndicator(
-                                  color: Colors.white,
+                                  color: colorScheme.onPrimary,
                                   strokeWidth: 2.5,
                                 ),
                               )
-                            : const Text(
+                            : Text(
                                 "Send OTP",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: colorScheme.onPrimary,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 1.2,
                                 ),
@@ -190,7 +227,10 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: Text(
                     "By continuing, you agree to our Terms & Privacy Policy.",
-                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.4),
+                      fontSize: 13,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),
