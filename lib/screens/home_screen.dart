@@ -5,6 +5,7 @@ import 'main_tabs/profile_screen.dart';
 import 'main_tabs/explore_screen.dart';
 import 'main_tabs/notifications_screen.dart';
 import 'main_tabs/chats_screen.dart';
+import 'package:appwrite/appwrite.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,6 +16,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  int _unreadNotifications = 0;
+  bool _loadingNotifications = false;
 
   final List<Widget> _pages = const [
     ProfileScreen(),
@@ -22,6 +25,53 @@ class _HomeScreenState extends State<HomeScreen> {
     NotificationsScreen(),
     ChatsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUnreadNotifications();
+  }
+
+  Future<void> _fetchUnreadNotifications() async {
+    setState(() {
+      _loadingNotifications = true;
+    });
+    try {
+      // Get current user
+      final user = await account.get();
+      final String userId = user.$id;
+
+      // Query notifications where userId matches and is_read == false
+      final result = await databases.listDocuments(
+        databaseId: '685a90fa0009384c5189',
+        collectionId: '685aae0300185620e41d',
+        queries: [
+          Query.equal('to', userId),
+          Query.equal('is_read', false),
+        ],
+      );
+
+      setState(() {
+        _unreadNotifications = result.documents.length;
+        _loadingNotifications = false;
+      });
+    } catch (e) {
+      setState(() {
+        _unreadNotifications = 0;
+        _loadingNotifications = false;
+      });
+    }
+  }
+
+  void _onTabTapped(int idx) {
+    setState(() {
+      _currentIndex = idx;
+      // Optionally, refresh notifications when opening notifications tab
+      if (idx == 2) {
+        _fetchUnreadNotifications();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
-          onTap: (idx) => setState(() => _currentIndex = idx),
+          onTap: _onTabTapped,
           selectedItemColor: const Color(0xFF412758),
           unselectedItemColor: const Color(0xFF412758),
           type: BottomNavigationBarType.fixed,
@@ -61,9 +111,41 @@ class _HomeScreenState extends State<HomeScreen> {
               label: "Explore",
             ),
             BottomNavigationBarItem(
-              icon: _currentIndex == 2
-                  ? const PhosphorIcon(PhosphorIconsFill.bell, color: Color(0xFF412758), size: 30.0,)
-                  : const PhosphorIcon(PhosphorIconsRegular.bell, color: Color(0xFF412758), size: 30.0,),
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  _currentIndex == 2
+                      ? const PhosphorIcon(PhosphorIconsFill.bell, color: Color(0xFF412758), size: 30.0,)
+                      : const PhosphorIcon(PhosphorIconsRegular.bell, color: Color(0xFF412758), size: 30.0,),
+                  if (_unreadNotifications > 0)
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Center(
+                          child: Text(
+                            _unreadNotifications > 99 ? '99+' : '$_unreadNotifications',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               label: "Notifications",
             ),
             BottomNavigationBarItem(
