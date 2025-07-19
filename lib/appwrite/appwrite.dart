@@ -11,3 +11,4 @@ final client = Client()
 final account = Account(client);
 final databases = Databases(client);
 final storage = Storage(client);
+final realtime = Realtime(client);

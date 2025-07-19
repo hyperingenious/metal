@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:appwrite/appwrite.dart';
 import '../../appwrite/appwrite.dart';
+import '../chat_screen.dart'; // Import the chat screen
 
 Future<List<Map<String, dynamic>>> fetchActiveChats() async {
   try {
@@ -10,7 +11,10 @@ Future<List<Map<String, dynamic>>> fetchActiveChats() async {
     final jwt = await account.createJWT();
     final token = jwt.jwt;
 
-    final uri = Uri.parse('http://localhost:3000/api/v1/chats/active');
+    final uri = Uri.parse(
+      'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/chats/active',
+    );
+ 
     final httpClient = HttpClient();
     final request = await httpClient.getUrl(uri);
     request.headers.set('Content-Type', 'application/json');
@@ -18,6 +22,7 @@ Future<List<Map<String, dynamic>>> fetchActiveChats() async {
     final response = await request.close();
     final body = await response.transform(utf8.decoder).join();
 
+    // Print the response body for debugging
     if (response.statusCode != 200) {
       throw Exception(
         jsonDecode(body)['error'] ?? 'Failed to fetch active chats',
@@ -125,13 +130,22 @@ class _ChatsScreenState extends State<ChatsScreen> {
               return Padding(
                 padding: const EdgeInsets.only(left: 8, right: 0),
                 child: ListTile(
-                  contentPadding: const EdgeInsets.only(left: 8, right: 8, top: 0, bottom: 0),
+                  contentPadding: const EdgeInsets.only(
+                    left: 8,
+                    right: 8,
+                    top: 0,
+                    bottom: 0,
+                  ),
                   leading: CircleAvatar(
                     radius: 22,
-                    backgroundImage: chat['partnerPhotoUrl'] != null && chat['partnerPhotoUrl'].toString().isNotEmpty
+                    backgroundImage:
+                        chat['partnerPhotoUrl'] != null &&
+                            chat['partnerPhotoUrl'].toString().isNotEmpty
                         ? NetworkImage(chat['partnerPhotoUrl'])
                         : null,
-                    child: (chat['partnerPhotoUrl'] == null || chat['partnerPhotoUrl'].toString().isEmpty)
+                    child:
+                        (chat['partnerPhotoUrl'] == null ||
+                            chat['partnerPhotoUrl'].toString().isEmpty)
                         ? const Icon(Icons.person, color: Color(0xFF6D4B86))
                         : null,
                   ),
@@ -176,7 +190,16 @@ class _ChatsScreenState extends State<ChatsScreen> {
                   horizontalTitleGap: 12,
                   minVerticalPadding: 12,
                   onTap: () {
-                    // TODO: Navigate to chat detail screen with connectionId etc.
+                    // Navigate to chat detail screen
+                    // Pass the user id of the user of whom the click is happened
+                    final String userId = chat['partnerId'] ?? '';
+                    final String connectionId = chat['connectionId'] ?? '';
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatScreen(userId: userId, connectionId: connectionId,),
+                      ),
+                    );
                   },
                 ),
               );

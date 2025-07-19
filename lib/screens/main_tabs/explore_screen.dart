@@ -100,8 +100,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final page = prefs.getInt(_localPageKey) ?? 0;
       if (profilesJson != null) {
         final List<dynamic> decoded = json.decode(profilesJson);
-        final List<Map<String, dynamic>> loadedProfiles =
-            decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+        final List<Map<String, dynamic>> loadedProfiles = decoded
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
         if (loadedProfiles.isNotEmpty) {
           setState(() {
             _profiles = loadedProfiles;
@@ -117,7 +118,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return false;
   }
 
-  Future<void> _saveProfilesToLocal(List<Map<String, dynamic>> profiles, int page) async {
+  Future<void> _saveProfilesToLocal(
+    List<Map<String, dynamic>> profiles,
+    int page,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_localProfilesKey, json.encode(profiles));
@@ -143,10 +147,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
-  Future<void> _fetchProfiles({
-    required int page,
-    bool reset = false,
-  }) async {
+  Future<void> _fetchProfiles({required int page, bool reset = false}) async {
     // Only fetch if there are no profiles in local storage
     if (_profiles.isNotEmpty) {
       setState(() {
@@ -167,7 +168,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
     });
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/api/v1/profiles/random-simple'),
+        Uri.parse(
+          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/profiles/random-simple',
+        ),
         headers: {
           'Authorization': 'Bearer $_jwt',
           'Content-Type': 'application/json',
@@ -185,7 +188,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
         } else if (data is Map<String, dynamic>) {
           if (data.isEmpty) {
             emptyProfiles = true;
-          } else if (data.length == 1 && data.values.first is List && (data.values.first as List).isEmpty) {
+          } else if (data.length == 1 &&
+              data.values.first is List &&
+              (data.values.first as List).isEmpty) {
             emptyProfiles = true;
           } else if (data.containsKey('profiles')) {
             profilesList = data['profiles'] ?? [];
@@ -280,7 +285,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
       }
 
       final response = await http.post(
-        Uri.parse('http://localhost:3000/api/v1/notification/invitations/send'),
+        Uri.parse(
+          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/notification/invitations/send',
+        ),
         headers: {
           'Authorization': 'Bearer $_jwt',
           'Content-Type': 'application/json',
@@ -290,9 +297,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
       if (response.statusCode == 200) {
         // Success
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invitation sent!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Invitation sent!')));
         // After sending, remove the current profile from local storage and memory
         await _removeProfileFromLocal(_currentProfileIndex);
 
@@ -318,15 +325,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
             errorMsg = data['error'].toString();
           }
         } catch (_) {}
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMsg)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMsg)));
       }
     } catch (e) {
       debugPrint('Error sending invite: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error sending invite: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error sending invite: $e')));
     } finally {
       setState(() {
         _sendingInvite = false;
@@ -341,7 +348,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final dob = DateTime.parse(dobString);
       final now = DateTime.now();
       int age = now.year - dob.year;
-      if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
+      if (now.month < dob.month ||
+          (now.month == dob.month && now.day < dob.day)) {
         age--;
       }
       return age;

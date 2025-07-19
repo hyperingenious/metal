@@ -175,17 +175,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final jwt = await account.createJWT();
       final token = jwt.jwt;
       final uri = Uri.parse(
-        'http://localhost:3000/api/v1/notification/invitations/accept',
+        'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/notification/invitations/accept',
       );
       final httpClient = HttpClient();
       final request = await httpClient.postUrl(uri);
       request.headers.set('Content-Type', 'application/json');
       request.headers.set('Authorization', 'Bearer $token');
-      request.write(
-        jsonEncode({
-          'connectionId': connectionId,
-        }),
-      );
+      request.write(jsonEncode({'connectionId': connectionId}));
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
       if (response.statusCode != 200) {
@@ -227,7 +223,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final jwt = await account.createJWT();
       final token = jwt.jwt;
       final uri = Uri.parse(
-        'http://localhost:3000/api/v1/notification/invitations/decline',
+        'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/notification/invitations/decline',
       );
       final httpClient = HttpClient();
       final request = await httpClient.postUrl(uri);
@@ -384,8 +380,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   const SizedBox(width: 12),
                                   CircleAvatar(
                                     radius: 20,
-                                    backgroundImage: (notif['userImg'] is String)
-                                        ? NetworkImage(notif['userImg'] as String)
+                                    backgroundImage:
+                                        (notif['userImg'] is String)
+                                        ? NetworkImage(
+                                            notif['userImg'] as String,
+                                          )
                                         : null,
                                     child: notif['userImg'] == null
                                         ? const Icon(
@@ -441,7 +440,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   children: [
                                     TextButton(
                                       style: TextButton.styleFrom(
-                                        foregroundColor: const Color(0xFF388E3C), // pastel green text
+                                        foregroundColor: const Color(
+                                          0xFF388E3C,
+                                        ), // pastel green text
                                         textStyle: const TextStyle(
                                           fontFamily: 'Poppins',
                                           fontWeight: FontWeight.w600,
@@ -452,11 +453,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                           vertical: 6,
                                         ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                       ),
                                       onPressed: () {
-                                        final connectionId = notif['connectionId'];
+                                        final connectionId =
+                                            notif['connectionId'];
                                         if (connectionId != null) {
                                           _handleAcceptInvitation(
                                             context: context,
@@ -469,7 +473,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     const SizedBox(width: 10),
                                     TextButton(
                                       style: TextButton.styleFrom(
-                                        foregroundColor: const Color(0xFFB85C5C), // pastel red text
+                                        foregroundColor: const Color(
+                                          0xFFB85C5C,
+                                        ), // pastel red text
                                         textStyle: const TextStyle(
                                           fontFamily: 'Poppins',
                                           fontWeight: FontWeight.w600,
@@ -480,12 +486,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                           vertical: 6,
                                         ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                       ),
                                       onPressed: () {
-                                        final connectionId = notif['connectionId'];
-                                        final receiverUserId = notif['fromUserId'];
+                                        final connectionId =
+                                            notif['connectionId'];
+                                        final receiverUserId =
+                                            notif['fromUserId'];
                                         if (connectionId != null &&
                                             receiverUserId != null) {
                                           _handleRejectInvitation(
