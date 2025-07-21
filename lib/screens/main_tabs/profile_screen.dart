@@ -3,7 +3,6 @@ import 'package:metal/appwrite/appwrite.dart';
 import 'package:metal/widgets/profile_edi_screen.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:appwrite/appwrite.dart';
-// Import the ProfileEditScreen (adjust the import path as needed)
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -107,11 +106,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (data['hobbies'] is List && (data['hobbies'] as List).isNotEmpty) {
           // Fix: Ensure we only extract String IDs from the hobbies list
           final List<dynamic> hobbiesRaw = data['hobbies'];
-          final List<String> hobbyIds = hobbiesRaw.map((e) {
-            if (e is String) return e;
-            if (e is Map && e.containsKey(r'$id')) return e[r'$id'].toString();
-            return null;
-          }).whereType<String>().toList();
+          final List<String> hobbyIds = hobbiesRaw
+              .map((e) {
+                if (e is String) return e;
+                if (e is Map && e.containsKey(r'$id'))
+                  return e[r'$id'].toString();
+                return null;
+              })
+              .whereType<String>()
+              .toList();
 
           if (hobbyIds.isNotEmpty) {
             final hobbyDocs = await databases.listDocuments(
@@ -145,7 +148,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         errorMessage = null;
         debugError = null;
       });
-
     } on AppwriteException catch (e) {
       setState(() {
         isLoading = false;
@@ -328,9 +330,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 name ?? '',
                                 style: const TextStyle(
                                   fontFamily: 'Poppins',
-                                  fontSize: 20,
+                                  fontSize: 24,
                                   color: Colors.white,
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.w600,
                                   shadows: [
                                     Shadow(
                                       color: Colors.black38,
@@ -354,7 +356,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => const ProfileEditScreen(),
+                                        builder: (context) =>
+                                            const ProfileEditScreen(),
                                       ),
                                     );
                                   },
@@ -500,23 +503,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             (tag) => Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 5,
+                                                    horizontal: 14,
+                                                    vertical: 7,
                                                   ),
                                               decoration: BoxDecoration(
                                                 borderRadius:
-                                                    BorderRadius.circular(16),
-                                                color: Colors.white.withOpacity(
-                                                  0.95,
+                                                    BorderRadius.circular(18),
+                                                gradient: const LinearGradient(
+                                                  colors: [
+                                                    Color(0xFFF8EBF9),
+                                                    Color(0xFFE0D7F3),
+                                                  ],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
                                                 ),
+                                                border: Border.all(
+                                                  color: Color(
+                                                    0xFFBFA2E0,
+                                                  ).withOpacity(0.5),
+                                                  width: 1.2,
+                                                ),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Color(
+                                                      0xFFBFA2E0,
+                                                    ).withOpacity(0.18),
+                                                    blurRadius: 8,
+                                                    offset: Offset(0, 2),
+                                                  ),
+                                                ],
                                               ),
                                               child: Text(
                                                 tag,
                                                 style: const TextStyle(
                                                   fontFamily: 'Poppins',
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
                                                   color: Color(0xFF3B2357),
+                                                  letterSpacing: 0.1,
                                                 ),
                                               ),
                                             ),
@@ -538,7 +562,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Builder(
                         builder: (context) {
                           // If there are no images at all, show a message
-                          final hasAnyImages = images.isNotEmpty && images.any((img) => img.isNotEmpty);
+                          final hasAnyImages =
+                              images.isNotEmpty &&
+                              images.any((img) => img.isNotEmpty);
                           if (!hasAnyImages) {
                             return Container(
                               height: 120,
@@ -559,7 +585,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           final double spacing = 16;
                           final double crossAxisCount = 3;
                           final double itemWidth =
-                              (MediaQuery.of(context).size.width - 32 - (spacing * (crossAxisCount - 1))) /
+                              (MediaQuery.of(context).size.width -
+                                  32 -
+                                  (spacing * (crossAxisCount - 1))) /
                               crossAxisCount;
                           final double itemHeight = itemWidth * 0.68;
 
@@ -586,22 +614,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               itemCount: 6,
                               itemBuilder: (context, index) {
                                 if (paddedImages[index].isNotEmpty) {
-                                  return ClipRRect(
-                                    borderRadius: BorderRadius.circular(14),
-                                    child: Image.network(
-                                      paddedImages[index],
-                                      fit: BoxFit.cover,
-                                      width: itemWidth,
-                                      height: itemHeight,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              Container(
-                                                color: Colors.grey[300],
-                                                child: const Icon(
-                                                  Icons.broken_image,
-                                                  color: Colors.grey,
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(14),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.13),
+                                          blurRadius: 14,
+                                          offset: Offset(0, 6),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: Image.network(
+                                        paddedImages[index],
+                                        fit: BoxFit.cover,
+                                        width: itemWidth,
+                                        height: itemHeight,
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                Container(
+                                                  color: Colors.grey[300],
+                                                  child: const Icon(
+                                                    Icons.broken_image,
+                                                    color: Colors.grey,
+                                                  ),
                                                 ),
-                                              ),
+                                      ),
                                     ),
                                   );
                                 } else {

@@ -419,15 +419,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
             actions: [
               IconButton(
                 icon: const Icon(
-                  PhosphorIconsRegular.bell,
-                  color: Color(0xFF6D4B86),
-                  size: 22,
-                ),
-                onPressed: () {},
-                splashRadius: 22,
-              ),
-              IconButton(
-                icon: const Icon(
                   PhosphorIconsRegular.gearSix,
                   color: Color(0xFF6D4B86),
                   size: 22,

@@ -55,7 +55,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   String? _originalName;
   String? _originalProfession;
 
-  // Appwrite IDs (replace with your actual IDs)
   @override
   void initState() {
     super.initState();
@@ -160,13 +159,13 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     super.dispose();
   }
 
-  // New: Swap images and update Appwrite image collection so that the selected image becomes image_1
+  // Swap images and update Appwrite image collection so that the selected image becomes image_1
   Future<void> _setAsMainPhoto(int index) async {
     if (index < 0 ||
         index >= _images.length ||
         index == 0 ||
-        _images[index].isEmpty)
-      return;
+        _images[index].isEmpty) return;
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -187,8 +186,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         final docId = imageDocs.documents.first.$id;
         // Prepare new image fields: swap image_1 and image_{index+1}
         Map<String, dynamic> updateData = {};
-        String mainImage = _images[0];
-        String selectedImage = _images[index];
 
         // Swap in local list
         setState(() {
@@ -198,14 +195,16 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           _highlightedIndex = 0;
         });
 
-        // Prepare update data for Appwrite
+        // For each image field, ensure that if the value is not a valid URL, set it to null
         for (int i = 0; i < 6; i++) {
-          if (i == 0) {
-            updateData['image_1'] = selectedImage;
-          } else if (i == index) {
-            updateData['image_${i + 1}'] = mainImage;
+          String value = _images[i];
+          // If the value is empty or not a valid URL, set to null
+          if (value.isEmpty ||
+              !(Uri.tryParse(value)?.hasAbsolutePath ?? false) ||
+              !(Uri.tryParse(value)?.isAbsolute ?? false)) {
+            updateData['image_${i + 1}'] = null;
           } else {
-            updateData['image_${i + 1}'] = _images[i];
+            updateData['image_${i + 1}'] = value;
           }
         }
 
@@ -299,7 +298,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         // Create a new document with all 6 image fields, only one filled
         final Map<String, dynamic> data = {
           'user': currentUserId,
-          for (int i = 1; i <= 6; i++) 'image_$i': '',
+          for (int i = 1; i <= 6; i++) 'image_$i': null,
         };
         data[imageField] = fileUrl;
 
@@ -390,7 +389,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                             String imageField = 'image_${index + 1}';
                             if (imageDocs.documents.isNotEmpty) {
                               final docId = imageDocs.documents.first.$id;
-                              // Set the field to null (not empty string) for deletion
+                              // Set the field to null for deletion
                               await databases.updateDocument(
                                 databaseId: _databaseId,
                                 collectionId: _imagesCollectionId,
