@@ -14,6 +14,7 @@ class _AddHobbiesScreenState extends State<AddHobbiesScreen> {
   List<Map<String, dynamic>> allHobbies = [];
   final List<String> selectedHobbyIds = [];
   bool _loading = true;
+  bool _submitting = false; // <-- Add this line
 
   String databaseId = '685a90fa0009384c5189';
   String completionStatusCollectionId = '686777d300169b27b237';
@@ -76,6 +77,10 @@ class _AddHobbiesScreenState extends State<AddHobbiesScreen> {
       return;
     }
 
+    setState(() {
+      _submitting = true; // <-- Set loading true
+    });
+
     try {
       final user = await account.get();
       final userId = user.$id;
@@ -90,6 +95,9 @@ class _AddHobbiesScreenState extends State<AddHobbiesScreen> {
       );
 
       if (bioDataDoc.documents.isEmpty) {
+        setState(() {
+          _submitting = false; // <-- Set loading false
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -128,17 +136,27 @@ class _AddHobbiesScreenState extends State<AddHobbiesScreen> {
         );
       }
 
+      setState(() {
+        _submitting = false; // <-- Set loading false before navigation
+      });
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => AddMinMaxAgeScreen()),
       );
     } on AppwriteException catch (e) {
+      setState(() {
+        _submitting = false; // <-- Set loading false
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Appwrite error: ${e.message ?? 'Unknown error'}"),
         ),
       );
     } catch (e) {
+      setState(() {
+        _submitting = false; // <-- Set loading false
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("An unexpected error occurred: $e")),
       );
@@ -266,7 +284,7 @@ class _AddHobbiesScreenState extends State<AddHobbiesScreen> {
                                   width: double.infinity,
                                   height: 56,
                                   child: ElevatedButton(
-                                    onPressed: _submit,
+                                    onPressed: _submitting ? null : _submit, // <-- Disable when loading
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: accentColor,
                                       foregroundColor: Colors.white,
@@ -280,7 +298,16 @@ class _AddHobbiesScreenState extends State<AddHobbiesScreen> {
                                       ),
                                       elevation: 2,
                                     ),
-                                    child: const Text("Continue"),
+                                    child: _submitting
+                                        ? const SizedBox(
+                                            width: 24,
+                                            height: 24,
+                                            child: CircularProgressIndicator(
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                              strokeWidth: 2.5,
+                                            ),
+                                          )
+                                        : const Text("Continue"),
                                   ),
                                 ),
                                 const SizedBox(height: 12),

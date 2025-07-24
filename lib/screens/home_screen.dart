@@ -20,6 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _unreadChats = 0;
   bool _loadingNotifications = false;
   bool _loadingChats = false;
+  late final PageController _pageController;
 
   final List<Widget> _pages = const [
     ProfileScreen(),
@@ -31,8 +32,15 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _currentIndex);
     _fetchUnreadNotifications();
     _fetchUnreadChats();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchUnreadNotifications() async {
@@ -126,24 +134,38 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onTabTapped(int idx) {
     setState(() {
       _currentIndex = idx;
-      // Optionally, refresh notifications when opening notifications tab
-      if (idx == 2) {
-        _fetchUnreadNotifications();
-      }
-      // Optionally, refresh unread chats when opening chats tab
-      if (idx == 3) {
-        _fetchUnreadChats();
-      }
     });
+    _pageController.animateToPage(
+      idx,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.ease,
+    );
+    // Optionally refresh notifications/chats
+    if (idx == 2) _fetchUnreadNotifications();
+    if (idx == 3) _fetchUnreadChats();
+  }
+
+  void _onPageChanged(int idx) {
+    setState(() {
+      _currentIndex = idx;
+    });
+    // Optionally refresh notifications/chats
+    if (idx == 2) _fetchUnreadNotifications();
+    if (idx == 3) _fetchUnreadChats();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_currentIndex],
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: _onPageChanged,
+        children: _pages,
+        physics: const BouncingScrollPhysics(), // or ClampingScrollPhysics()
+      ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
-          color: Color(0xfff8ebf9),
+          color: Colors.white, // changed from Color(0xfff8ebf9) to white
           boxShadow: [
             BoxShadow(
               color: Color(0x1A000000), // very light black, 10% opacity
@@ -159,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
           selectedItemColor: const Color(0xFF412758),
           unselectedItemColor: const Color(0xFF412758),
           type: BottomNavigationBarType.fixed,
-          backgroundColor: const Color(0xfff8ebf9),
+          backgroundColor: Colors.white, // changed from Color(0xfff8ebf9) to white
           elevation: 0, // Remove default shadow
           items: [
             BottomNavigationBarItem(

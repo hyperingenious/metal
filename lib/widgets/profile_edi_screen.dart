@@ -10,6 +10,7 @@ class ProfileEditScreen extends StatefulWidget {
   final List<String> initialImages;
   final String? initialProfession;
   final String? initialProfessionName;
+  final String? initialBio;
 
   const ProfileEditScreen({
     Key? key,
@@ -17,6 +18,7 @@ class ProfileEditScreen extends StatefulWidget {
     this.initialImages = const ['', '', '', '', '', ''],
     this.initialProfession,
     this.initialProfessionName,
+    this.initialBio,
   }) : super(key: key);
 
   @override
@@ -47,6 +49,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
   String? _selectedProfession;
   late TextEditingController _professionNameController;
+  late TextEditingController _bioController;
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -54,6 +57,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   // For change detection
   String? _originalName;
   String? _originalProfession;
+  String? _originalBio;
 
   @override
   void initState() {
@@ -71,21 +75,26 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     _professionNameController = TextEditingController(
       text: widget.initialProfessionName ?? '',
     );
+    _bioController = TextEditingController(
+      text: widget.initialBio ?? '',
+    );
     _originalName = widget.initialName ?? '';
     _originalProfession = widget.initialProfession ?? _professions.first;
+    _originalBio = widget.initialBio ?? '';
 
     // Listen for changes to update the UI for the Save button
     _nameController.addListener(_onProfileFieldChanged);
     _professionNameController.addListener(_onProfileFieldChanged);
+    _bioController.addListener(_onProfileFieldChanged);
 
-    _fetchProfileImages();
+    _fetchProfileImagesAndBio();
   }
 
   void _onProfileFieldChanged() {
     setState(() {}); // Triggers rebuild for Save button enable/disable
   }
 
-  Future<void> _fetchProfileImages() async {
+  Future<void> _fetchProfileImagesAndBio() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -131,11 +140,32 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         }
       }
 
+      // Fetch profession and bio from biodata collection
+      String? fetchedProfession;
+      String? fetchedProfessionName;
+      String? fetchedBio;
+      final bioDataDocs = await databases.listDocuments(
+        databaseId: _databaseId,
+        collectionId: bioDataCollectionId,
+        queries: [Query.equal('user', currentUserId)],
+      );
+      if (bioDataDocs.documents.isNotEmpty) {
+        final data = bioDataDocs.documents.first.data;
+        fetchedProfession = data['profession_type'] as String?;
+        fetchedProfessionName = data['profession_name'] as String?;
+        fetchedBio = data['bio'] as String?;
+      }
+
       setState(() {
         _nameController.text = fetchedName ?? widget.initialName ?? '';
         _images = fetchedImages;
         _isLoading = false;
         _originalName = fetchedName ?? widget.initialName ?? '';
+        _selectedProfession = fetchedProfession ?? widget.initialProfession ?? _professions.first;
+        _professionNameController.text = fetchedProfessionName ?? widget.initialProfessionName ?? '';
+        _bioController.text = fetchedBio ?? widget.initialBio ?? '';
+        _originalProfession = fetchedProfession ?? widget.initialProfession ?? _professions.first;
+        _originalBio = fetchedBio ?? widget.initialBio ?? '';
       });
     } on AppwriteException catch (e) {
       setState(() {
@@ -154,8 +184,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   void dispose() {
     _nameController.removeListener(_onProfileFieldChanged);
     _professionNameController.removeListener(_onProfileFieldChanged);
+    _bioController.removeListener(_onProfileFieldChanged);
     _nameController.dispose();
     _professionNameController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
 
@@ -425,7 +457,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     final nameChanged = (_nameController.text.trim() != (_originalName ?? ''));
     final professionChanged =
         (_selectedProfession != (_originalProfession ?? _professions.first));
-    return nameChanged || professionChanged;
+    final bioChanged = (_bioController.text.trim() != (_originalBio ?? ''));
+    return nameChanged || professionChanged || bioChanged;
   }
 
   // The function to be called on save (to be implemented by you)
@@ -442,6 +475,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       final nameChanged = (_nameController.text.trim() != (_originalName ?? ''));
       final professionChanged =
           (_selectedProfession != (_originalProfession ?? _professions.first));
+      final bioChanged = (_bioController.text.trim() != (_originalBio ?? ''));
 
       bool updated = false;
 
@@ -461,25 +495,31 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         updated = true;
       }
 
-      // Update profession in biodata collection if changed
-      if (professionChanged) {
+      // Update profession and/or bio in biodata collection if changed
+      if (professionChanged || bioChanged) {
         final biodDataDocument = await databases.listDocuments(
           databaseId: _databaseId,
           collectionId: bioDataCollectionId,
           queries: [Query.equal('user', userId)],
         );
         if (biodDataDocument.documents.isNotEmpty) {
+          final updateData = <String, dynamic>{};
+          if (professionChanged) {
+            updateData['profession_type'] = _selectedProfession;
+            updateData['profession_name'] = _professionNameController.text.trim();
+          }
+          if (bioChanged) {
+            updateData['bio'] = _bioController.text.trim();
+          }
           await databases.updateDocument(
             databaseId: _databaseId,
             collectionId: bioDataCollectionId,
             documentId: biodDataDocument.documents[0].$id,
-            data: {
-              'profession_type': _selectedProfession,
-              'profession_name': _professionNameController.text.trim(),
-            },
+            data: updateData,
           );
           setState(() {
-            _originalProfession = _selectedProfession;
+            if (professionChanged) _originalProfession = _selectedProfession;
+            if (bioChanged) _originalBio = _bioController.text.trim();
           });
           updated = true;
         } else {
@@ -489,8 +529,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         }
       }
 
-      // If neither was updated, show a message (optional)
-      if (!nameChanged && !professionChanged) {
+      // If nothing was updated, show a message (optional)
+      if (!nameChanged && !professionChanged && !bioChanged) {
         setState(() {
           _errorMessage = "No changes to save.";
         });
@@ -546,9 +586,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     final imageHeight = screenHeight * 0.6;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8EBF9),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8EBF9),
+        backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF3B2357)),
         title: const Text(
@@ -621,7 +661,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: _fetchProfileImages,
+                      onPressed: _fetchProfileImagesAndBio,
                       child: const Text("Retry"),
                     ),
                   ],
@@ -956,7 +996,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    // Profession section
+                    // Profession and Bio section
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Card(
@@ -1041,6 +1081,42 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                   ),
                                   filled: true,
                                   fillColor: const Color(0xFFF8EBF9),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              const Text(
+                                "Bio",
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                  color: Color(0xFF3B2357),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _bioController,
+                                maxLength: 150,
+                                maxLines: 3,
+                                decoration: InputDecoration(
+                                  labelText: "Tell us about yourself",
+                                  labelStyle: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    color: Color(0xFF7B4AE2),
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFF7B4AE2),
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8EBF9),
+                                  counterStyle: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 12,
+                                    color: Color(0xFF7B4AE2),
+                                  ),
                                 ),
                               ),
                             ],

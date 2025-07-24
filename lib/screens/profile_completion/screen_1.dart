@@ -15,6 +15,7 @@ class _AddDobAndNameScreenState extends State<AddDobAndNameScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   DateTime? _selectedDate;
+  bool _isLoading = false; // <-- Add this line
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -53,96 +54,101 @@ class _AddDobAndNameScreenState extends State<AddDobAndNameScreen> {
 
   Future<void> _submit() async {
     if (_formKey.currentState!.validate() && _selectedDate != null) {
-      final name = _nameController.text.trim();
-      final dob = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+      setState(() => _isLoading = true); // <-- Start loading
+      try {
+        final name = _nameController.text.trim();
+        final dob = DateFormat('yyyy-MM-dd').format(_selectedDate!);
 
-      // TODO: Replace this with Appwrite document update logic
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Name: $name\nDOB: $dob")));
+        // TODO: Replace this with Appwrite document update logic
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Name: $name\nDOB: $dob")));
 
-      // Check if age is more than 18
-      final today = DateTime.now();
-      final age =
-          today.year -
-          _selectedDate!.year -
-          ((today.month < _selectedDate!.month ||
-                  (today.month == _selectedDate!.month &&
-                      today.day < _selectedDate!.day))
-              ? 1
-              : 0);
-      if (age < 18) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("You must be at least 18 years old.")),
-        );
-        return;
-      }
+        // Check if age is more than 18
+        final today = DateTime.now();
+        final age =
+            today.year -
+            _selectedDate!.year -
+            ((today.month < _selectedDate!.month ||
+                    (today.month == _selectedDate!.month &&
+                        today.day < _selectedDate!.day))
+                ? 1
+                : 0);
+        if (age < 18) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("You must be at least 18 years old.")),
+          );
+          return;
+        }
 
-      final user = await account.get();
-      final userId = user.$id;
-      final userBioDataDocument = await databases.listDocuments(
-        databaseId: databaseId,
-        collectionId: bioDataCollectionID,
-        queries: [Query.equal('user', userId)],
-      );
-
-      final prefeDoc = await databases.listDocuments(
-        databaseId: databaseId,
-        collectionId: preferenceCollectionID,
-        queries: [
-          Query.equal('user', userId),
-          Query.select(['\$id']),
-        ],
-      );
-
-      if (prefeDoc.documents.isEmpty) {
-        await databases.createDocument(
-          databaseId: databaseId,
-          collectionId: preferenceCollectionID,
-          documentId: ID.unique(),
-          data: {'user': userId,},
-        );
-      }
-
-      if (userBioDataDocument.total == 0) {
-        await databases.createDocument(
+        final user = await account.get();
+        final userId = user.$id;
+        final userBioDataDocument = await databases.listDocuments(
           databaseId: databaseId,
           collectionId: bioDataCollectionID,
-          documentId: ID.unique(),
-          data: {'user': userId, 'dob': dob},
+          queries: [Query.equal('user', userId)],
         );
-      }
 
-      await databases.updateDocument(
-        databaseId: databaseId,
-        collectionId: userCollectionId,
-        documentId: userId,
-        data: {'name': name},
-      );
+        final prefeDoc = await databases.listDocuments(
+          databaseId: databaseId,
+          collectionId: preferenceCollectionID,
+          queries: [
+            Query.equal('user', userId),
+            Query.select(['\$id']),
+          ],
+        );
 
-      final userCompletionStatusDocument = await databases.listDocuments(
-        databaseId: databaseId,
-        collectionId: completionStatusCollectionId,
-        queries: [
-          Query.equal('user', userId),
-          Query.select(['\$id']),
-        ],
-      );
+        if (prefeDoc.documents.isEmpty) {
+          await databases.createDocument(
+            databaseId: databaseId,
+            collectionId: preferenceCollectionID,
+            documentId: ID.unique(),
+            data: {'user': userId,},
+          );
+        }
 
-      if (userCompletionStatusDocument.documents.isNotEmpty) {
-        final documentId = userCompletionStatusDocument.documents[0].$id;
+        if (userBioDataDocument.total == 0) {
+          await databases.createDocument(
+            databaseId: databaseId,
+            collectionId: bioDataCollectionID,
+            documentId: ID.unique(),
+            data: {'user': userId, 'dob': dob},
+          );
+        }
+
         await databases.updateDocument(
           databaseId: databaseId,
-          collectionId: completionStatusCollectionId,
-          documentId: documentId,
-          data: {'isAddedDOBAndName': true},
+          collectionId: userCollectionId,
+          documentId: userId,
+          data: {'name': name},
         );
-      }
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => AddHeightScreen()),
-      );
+        final userCompletionStatusDocument = await databases.listDocuments(
+          databaseId: databaseId,
+          collectionId: completionStatusCollectionId,
+          queries: [
+            Query.equal('user', userId),
+            Query.select(['\$id']),
+          ],
+        );
+
+        if (userCompletionStatusDocument.documents.isNotEmpty) {
+          final documentId = userCompletionStatusDocument.documents[0].$id;
+          await databases.updateDocument(
+            databaseId: databaseId,
+            collectionId: completionStatusCollectionId,
+            documentId: documentId,
+            data: {'isAddedDOBAndName': true},
+          );
+        }
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => AddHeightScreen()),
+        );
+      } finally {
+        setState(() => _isLoading = false); // <-- Stop loading
+      }
     } else {
       ScaffoldMessenger.of(
         context,
@@ -228,7 +234,7 @@ class _AddDobAndNameScreenState extends State<AddDobAndNameScreen> {
             child: SizedBox(
               height: 56,
               child: ElevatedButton.icon(
-                onPressed: _submit,
+                onPressed: _isLoading ? null : _submit, // <-- Disable when loading
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
                   shape: RoundedRectangleBorder(
@@ -237,15 +243,33 @@ class _AddDobAndNameScreenState extends State<AddDobAndNameScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   elevation: 2,
                 ),
-                icon: const Icon(Icons.arrow_forward, color: Colors.white),
-                label: const Text(
-                  "Continue",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
+                icon: _isLoading
+                    ? SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(Icons.arrow_forward, color: Colors.white),
+                label: _isLoading
+                    ? const Text(
+                        "Loading...",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        "Continue",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
           ),

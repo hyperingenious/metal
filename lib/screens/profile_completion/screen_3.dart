@@ -22,7 +22,10 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
   final FixedExtentScrollController _controller =
       FixedExtentScrollController(initialItem: 0);
 
+  bool _isLoading = false; // <-- 1. Add loading state
+
   Future<void> _submit() async {
+    setState(() => _isLoading = true); // <-- 2. Start loading
     try {
       final user = await account.get();
       final userId = user.$id;
@@ -69,11 +72,14 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
         );
       }
 
+      setState(() => _isLoading = false); // <-- 3. Stop loading before navigation
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => AddHobbiesScreen()),
       );
     } catch (e) {
+      setState(() => _isLoading = false); // <-- 3. Stop loading on error
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
@@ -215,7 +221,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                             width: double.infinity,
                             height: 56,
                             child: ElevatedButton(
-                              onPressed: _submit,
+                              onPressed: _isLoading ? null : _submit, // <-- 4. Disable when loading
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: accentColor,
                                 foregroundColor: Colors.white,
@@ -229,7 +235,16 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                                 ),
                                 elevation: 2,
                               ),
-                              child: const Text("Continue"),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        strokeWidth: 3,
+                                      ),
+                                    )
+                                  : const Text("Continue"),
                             ),
                           ),
                           const SizedBox(height: 12),

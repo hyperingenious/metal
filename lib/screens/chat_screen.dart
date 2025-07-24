@@ -35,10 +35,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       _sendingImage = false,
       _sendingText = false;
   StreamSubscription? _realtimeSub;
+  String? _currentUserId;
+
+  // For expanding the action menu
+  bool _showActionMenu = false;
 
   // Message count state
   int _messageCount = 0;
   bool _messageCountLoading = true;
+
+  // For proposal accept feedback
+  Map<String, bool> _acceptedProposals = {};
+
+  // For caching date proposal status per connectionId
+  Map<String, String?> _dateProposalStatusCache = {};
 
   /// Returns a DateTime in the local timezone, from a timestamp (seconds or ms)
   DateTime _timestampToLocalDateTime(dynamic ts) {
@@ -86,6 +96,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   String _formatTime(DateTime d) =>
       DateFormat('h:mma').format(d.toLocal()).toLowerCase();
 
+  // Store the dateProposalStatus for this chat's connection
+  String? _dateProposalStatus;
+  bool _dateProposalStatusLoading = false;
+  String? _dateProposalStatusError;
+
+  // Track locally deleted messages (by document id)
+  Set<String> _locallyDeletedMessageIds = {};
+
   @override
   void initState() {
     super.initState();
@@ -93,12 +111,27 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _controller.addListener(
       () => setState(() => _hasText = _controller.text.trim().isNotEmpty),
     );
+    _fetchCurrentUserId();
     _fetchUserInfo();
     _fetchMessages();
     _createChatInboxOnLoad();
     _subscribeToRealtime();
     _markMessagesAsRead();
     _fetchMessageCount();
+    _fetchDateProposalStatus();
+  }
+
+  Future<void> _fetchCurrentUserId() async {
+    try {
+      final user = await account.get();
+      setState(() {
+        _currentUserId = user.$id;
+      });
+    } catch (e) {
+      setState(() {
+        _currentUserId = null;
+      });
+    }
   }
 
   Future<void> _fetchMessageCount() async {
@@ -240,6 +273,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           });
 
           await _markMessagesAsRead();
+          // Also refresh proposal status in case of real-time update
+          await _fetchDateProposalStatus();
         });
   }
 
@@ -271,6 +306,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         _subscribeToRealtime();
         _markMessagesAsRead(); // Mark as read when returning to page
       }
+      _fetchDateProposalStatus();
     }
     super.didChangeAppLifecycleState(state);
   }
@@ -280,7 +316,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       final inboxDoc = await databases.listDocuments(
         databaseId: '685a90fa0009384c5189',
         collectionId: '687961d1002e17be4c8a',
-        queries: [Query.equal('\$id', widget.connectionId)],
+        queries: [Query.equal(r'$id', widget.connectionId)],
       );
       if (inboxDoc.documents.isEmpty) {
         try {
@@ -354,6 +390,36 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
+  // Fetch the dateProposalStatus from the connection document
+  Future<void> _fetchDateProposalStatus() async {
+    setState(() {
+      _dateProposalStatusLoading = true;
+      _dateProposalStatusError = null;
+    });
+    try {
+      final doc = await databases.getDocument(
+        databaseId: '685a90fa0009384c5189',
+        collectionId: '685a95f5001cadd0cfc3',
+        documentId: widget.connectionId,
+      );
+      String? status;
+      if (doc.data != null && doc.data['dateProposalStatus'] != null) {
+        status = doc.data['dateProposalStatus'] as String?;
+      }
+      setState(() {
+        _dateProposalStatus = status;
+        _dateProposalStatusLoading = false;
+        _dateProposalStatusError = null;
+      });
+    } catch (e) {
+      setState(() {
+        _dateProposalStatus = null;
+        _dateProposalStatusLoading = false;
+        _dateProposalStatusError = e.toString();
+      });
+    }
+  }
+
   Future<void> _fetchMessages() async {
     setState(() {
       _messagesLoading = true;
@@ -399,6 +465,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       });
       // Mark as read after fetching messages
       await _markMessagesAsRead();
+      // Fetch proposal status after loading messages
+      await _fetchDateProposalStatus();
     } on SocketException catch (e) {
       setState(() {
         _messagesError = true;
@@ -464,7 +532,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         throw Exception('Failed to upload image to storage');
       final jwt = await account.createJWT(), token = jwt.jwt;
       final res = await http.post(
-        Uri.parse('https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/chats/${widget.connectionId}/messages'),
+        Uri.parse(
+          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/chats/${widget.connectionId}/messages',
+        ),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -477,12 +547,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       _incrementMessageCount();
       // Do not update _messages here; rely on real-time or fetch
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients)
+        if (_scrollController.hasClients) {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent + 100,
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOut,
           );
+        }
       });
     } catch (e) {
       ScaffoldMessenger.of(
@@ -491,6 +562,252 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     } finally {
       setState(() => _sendingImage = false);
     }
+  }
+
+  // --- Message Deletion Logic ---
+
+  Future<void> _deleteMessage(Map<String, dynamic> message) async {
+    final String? docId = message[r'$id'] ?? message['id'];
+    if (docId == null) return;
+    try {
+      // Update the message document in Appwrite to set is_deleted: true
+      await databases.updateDocument(
+        databaseId: '685a90fa0009384c5189',
+        collectionId: '685aae75000e3642cbc0',
+        documentId: docId,
+        data: {'is_deleted': true},
+      );
+      // Mark as deleted locally for immediate UI feedback
+      setState(() {
+        _locallyDeletedMessageIds.add(docId);
+        // Also update the message in _messages to reflect is_deleted
+        for (var m in _messages) {
+          if ((m[r'$id'] ?? m['id']) == docId) {
+            m['is_deleted'] = true;
+          }
+        }
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Message deleted.')));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to delete message: $e')));
+    }
+  }
+
+  _showDeleteMessageDialog(Map<String, dynamic> message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Message'),
+        content: const Text('Are you sure you want to delete this message?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _deleteMessage(message);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Show proposal form dialog
+  void _showProposalFormDialog() {
+    DateTime? selectedDate;
+    TimeOfDay? selectedTime;
+    TextEditingController placeController = TextEditingController();
+    bool isLoading = false;
+    String? errorMessage;
+    String? successMessage;
+
+    void sendProposal(StateSetter setState) async {
+      if (selectedDate == null ||
+          selectedTime == null ||
+          placeController.text.trim().isEmpty) {
+        setState(() {
+          errorMessage = "Please select date, time, and enter a place.";
+        });
+        return;
+      }
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+        successMessage = null;
+      });
+      try {
+        final DateTime combinedDateTime = DateTime(
+          selectedDate!.year,
+          selectedDate!.month,
+          selectedDate!.day,
+          selectedTime!.hour,
+          selectedTime!.minute,
+        );
+        final jwt = await account.createJWT();
+        final token = jwt.jwt;
+        final res = await http.post(
+          Uri.parse(
+            'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/chats/${widget.connectionId}/propose-date',
+          ),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'date': combinedDateTime.toIso8601String(),
+            'place': placeController.text.trim(),
+          }),
+        );
+        if (res.statusCode == 200) {
+          setState(() {
+            isLoading = false;
+            successMessage = "Date proposal sent successfully.";
+          });
+          await Future.delayed(const Duration(seconds: 1));
+          Navigator.of(context).pop();
+          // After sending proposal, refresh proposal status
+          await _fetchDateProposalStatus();
+        } else {
+          setState(() {
+            isLoading = false;
+            errorMessage =
+                jsonDecode(res.body)['error'] ?? 'Failed to send proposal.';
+          });
+        }
+      } catch (e) {
+        setState(() {
+          isLoading = false;
+          errorMessage = e.toString();
+        });
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Send Proposal'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Date picker
+                    TextButton.icon(
+                      icon: const Icon(Icons.calendar_today, size: 20),
+                      label: Text(
+                        selectedDate == null
+                            ? 'Select date'
+                            : '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}',
+                      ),
+                      onPressed: isLoading
+                          ? null
+                          : () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.now(),
+                                firstDate: DateTime.now(),
+                                lastDate: DateTime.now().add(
+                                  const Duration(days: 365),
+                                ),
+                              );
+                              if (picked != null) {
+                                setState(() {
+                                  selectedDate = picked;
+                                });
+                              }
+                            },
+                    ),
+                    const SizedBox(height: 8),
+                    // Time picker
+                    TextButton.icon(
+                      icon: const Icon(Icons.access_time, size: 20),
+                      label: Text(
+                        selectedTime == null
+                            ? 'Select time'
+                            : selectedTime!.format(context),
+                      ),
+                      onPressed: isLoading
+                          ? null
+                          : () async {
+                              final picked = await showTimePicker(
+                                context: context,
+                                initialTime: TimeOfDay.now(),
+                              );
+                              if (picked != null) {
+                                setState(() {
+                                  selectedTime = picked;
+                                });
+                              }
+                            },
+                    ),
+                    const SizedBox(height: 8),
+                    // Place input
+                    TextField(
+                      controller: placeController,
+                      decoration: const InputDecoration(
+                        labelText: 'Place',
+                        border: OutlineInputBorder(),
+                      ),
+                      enabled: !isLoading,
+                    ),
+                    const SizedBox(height: 12),
+                    if (errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          errorMessage!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    if (successMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          successMessage!,
+                          style: const TextStyle(color: Colors.green),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading
+                      ? null
+                      : () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading ? null : () => sendProposal(setState),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Send'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   // 2. When sending a message, always add $createdAt (UTC ISO string)
@@ -612,7 +929,322 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       }
     }
     final isOptimistic = m['_optimistic'] == true && isSender;
+
+    // --- Deletion logic: check if message is deleted (either from server or locally) ---
+    final String? docId = m[r'$id'] ?? m['id'];
+    final bool isDeleted =
+        (m['is_deleted'] == true) ||
+        (docId != null && _locallyDeletedMessageIds.contains(docId));
+
     Widget messageWidget;
+
+    // If message is deleted, show deleted message UI
+    if (isDeleted) {
+      messageWidget = Row(
+        mainAxisAlignment: isSender
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        children: [
+          Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.8,
+            ),
+            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: isSender
+                  ? const BorderRadius.only(
+                      topLeft: Radius.circular(10),
+                      topRight: Radius.circular(6),
+                      bottomLeft: Radius.circular(10),
+                      bottomRight: Radius.circular(0),
+                    )
+                  : const BorderRadius.only(
+                      topLeft: Radius.circular(6),
+                      topRight: Radius.circular(10),
+                      bottomLeft: Radius.circular(0),
+                      bottomRight: Radius.circular(10),
+                    ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.purple.withOpacity(0.06),
+                  offset: const Offset(0, 2),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.delete, color: Colors.grey.shade500, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'This message was deleted',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontStyle: FontStyle.italic,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+      if (dayHeader != null) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [dayHeader, messageWidget],
+        );
+      }
+      return messageWidget;
+    }
+
+    // Special handling for date proposal messages
+    if (m['messageType'] == 'date_proposal') {
+      // Gradient background
+      final gradient = LinearGradient(
+        colors: isSender
+            ? [const Color(0xFFBFA2E6), const Color(0xFF9F6BC1)]
+            : [const Color(0xFF9F6BC1), const Color(0xFF7B3FA3)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+      // Determine if current user is the sender of the proposal
+      String? msgSenderId;
+      if (m['senderId'] is Map) {
+        msgSenderId =
+            m['senderId']['\$id'] ??
+            m['senderId']['id'] ??
+            m['senderId']['_id'];
+      } else if (m['senderId'] is String) {
+        msgSenderId = m['senderId'];
+      }
+      final userId = (_currentUserId ?? '').trim();
+      final senderIdStr = msgSenderId?.toString().trim();
+
+      // Only show buttons if the current user is NOT the sender of the proposal
+      final bool showProposalButtons = senderIdStr != userId;
+
+      // For accept feedback
+      final proposalId =
+          m[r'$id'] ??
+          m['id'] ??
+          m['timestamp']?.toString() ??
+          m.hashCode.toString();
+      final bool accepted = _acceptedProposals[proposalId] == true;
+
+      // Use the fetched dateProposalStatus for this chat
+      String? proposalStatus = _dateProposalStatus;
+      bool loadingStatus = _dateProposalStatusLoading;
+      String? statusError = _dateProposalStatusError;
+
+      Widget statusWidget = const SizedBox.shrink();
+
+      if (loadingStatus) {
+        statusWidget = Padding(
+          padding: const EdgeInsets.only(top: 12.0, bottom: 8.0),
+          child: Row(
+            children: const [
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 8),
+              Text(
+                "Checking proposal status...",
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ],
+          ),
+        );
+      } else if (statusError != null) {
+        statusWidget = Padding(
+          padding: const EdgeInsets.only(top: 12.0, bottom: 8.0),
+          child: Text(
+            "Failed to load proposal status",
+            style: const TextStyle(
+              color: Colors.redAccent,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
+        );
+      } else if (proposalStatus == "proposed") {
+        // Show accept/reject/modify buttons
+        if (showProposalButtons) {
+          statusWidget = _buildDateProposalButtons(
+            m,
+            showAcceptReject: true,
+            showModify: true,
+            onAccepted: () {
+              setState(() {
+                _acceptedProposals[proposalId] = true;
+              });
+              _fetchDateProposalStatus();
+            },
+          );
+        } else {
+          statusWidget = Padding(
+            padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+            child: Text(
+              "Proposal sent. Waiting for response.",
+              style: const TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w500,
+                fontSize: 15,
+              ),
+            ),
+          );
+        }
+      } else if (proposalStatus == "accepted") {
+        statusWidget = Padding(
+          padding: const EdgeInsets.only(top: 12.0, bottom: 8.0),
+          child: Row(
+            children: const [
+              Icon(Icons.check_circle, color: Colors.greenAccent, size: 22),
+              SizedBox(width: 8),
+              Text(
+                "Proposal Accepted",
+                style: TextStyle(
+                  color: Colors.greenAccent,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        );
+      } else if (proposalStatus == "rejected") {
+        statusWidget = Padding(
+          padding: const EdgeInsets.only(top: 12.0, bottom: 8.0),
+          child: Row(
+            children: const [
+              Icon(Icons.cancel, color: Colors.redAccent, size: 22),
+              SizedBox(width: 8),
+              Text(
+                "Proposal Rejected",
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        );
+      } else if (proposalStatus == "modified") {
+        statusWidget = Padding(
+          padding: const EdgeInsets.only(top: 12.0, bottom: 8.0),
+          child: Row(
+            children: const [
+              Icon(Icons.edit, color: Color(0xFF7B3FA3), size: 22),
+              SizedBox(width: 8),
+              Text(
+                "Proposal Modified",
+                style: TextStyle(
+                  color: Color(0xFF7B3FA3),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      messageWidget = Row(
+        mainAxisAlignment: isSender
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        children: [
+          Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.8,
+            ),
+            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: gradient,
+              borderRadius: isSender
+                  ? const BorderRadius.only(
+                      topLeft: Radius.circular(10),
+                      topRight: Radius.circular(6),
+                      bottomLeft: Radius.circular(10),
+                      bottomRight: Radius.circular(0),
+                    )
+                  : const BorderRadius.only(
+                      topLeft: Radius.circular(6),
+                      topRight: Radius.circular(10),
+                      bottomLeft: Radius.circular(0),
+                      bottomRight: Radius.circular(10),
+                    ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.purple.withOpacity(0.08),
+                  offset: const Offset(0, 2),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.favorite, color: Colors.white, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Date Proposal',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                if (text != null && text.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    text,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+                statusWidget,
+                if (md != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(
+                      _formatTime(md),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      );
+      if (dayHeader != null)
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [dayHeader, messageWidget],
+        );
+      return messageWidget;
+    }
 
     // Helper for alignment
     MainAxisAlignment alignment = isSender
@@ -652,211 +1284,151 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       textColor = Colors.white;
     }
 
+    Widget contentWidget;
     if (isImage && imageUrl != null && imageUrl.isNotEmpty) {
-      if (isOptimistic) {
-        messageWidget = Row(
-          mainAxisAlignment: alignment,
-          children: [
-            Flexible(
-              child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 1),
-                width: 200, // slightly reduced width
-                height: 220, // slightly reduced height
-                decoration: BoxDecoration(
-                  borderRadius: messageBorderRadius,
-                  color: messageColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.purple.withOpacity(0.08),
-                      offset: const Offset(0, 2),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: messageBorderRadius,
-                  child: !imageUrl.startsWith('http')
-                      ? Image.file(
-                          File(imageUrl),
-                          fit: BoxFit.cover,
-                          errorBuilder: (c, e, s) => Container(
-                            color: Colors.grey[300],
-                            child: const Center(
-                              child: Icon(Icons.broken_image),
-                            ),
-                          ),
-                        )
-                      : Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (c, e, s) => Container(
-                            color: Colors.grey[300],
-                            child: const Center(
-                              child: Icon(Icons.broken_image),
-                            ),
-                          ),
-                        ),
-                ),
+      final img = imageUrl.startsWith('http')
+          ? Image.network(
+              imageUrl,
+              fit: BoxFit.contain,
+              errorBuilder: (c, e, s) => Container(
+                color: Colors.grey[300],
+                child: const Center(child: Icon(Icons.broken_image)),
               ),
-            ),
-          ],
-        );
-      } else {
-        messageWidget = _buildImageMessage(
-          imageUrl: imageUrl,
-          caption: senderName,
-          isSender: isSender,
-          time: md,
-        );
-      }
-    } else if (text != null && text.isNotEmpty) {
-      if (isOptimistic) {
-        messageWidget = Row(
-          mainAxisAlignment: alignment,
-          children: [
-            Flexible(
-              child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 1),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12, // reduced from 18
-                  vertical: 8, // reduced from 14
-                ),
-                decoration: BoxDecoration(
-                  color: messageColor,
-                  borderRadius: messageBorderRadius,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.purple.withOpacity(0.08),
-                      offset: const Offset(0, 2),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: crossAxisAlignment,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        text,
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 15, // slightly reduced
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'Poppins',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8), // reduced from 10
-                    if (md != null)
-                      Text(
-                        _formatTime(md),
-                        style: TextStyle(
-                          color: textColor.withOpacity(0.7),
-                          fontSize: 11, // slightly reduced
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                  ],
-                ),
+            )
+          : Image.file(
+              File(imageUrl),
+              fit: BoxFit.contain,
+              errorBuilder: (c, e, s) => Container(
+                color: Colors.grey[300],
+                child: const Center(child: Icon(Icons.broken_image)),
               ),
-            ),
-          ],
-        );
-      } else {
-        messageWidget = Row(
-          mainAxisAlignment: alignment,
-          children: [
-            Flexible(
-              child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 1),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12, // reduced from 18
-                  vertical: 8, // reduced from 14
-                ),
-                decoration: BoxDecoration(
-                  color: messageColor,
-                  borderRadius: messageBorderRadius,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.purple.withOpacity(0.08),
-                      offset: const Offset(0, 2),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: crossAxisAlignment,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        text,
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 15, // slightly reduced
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'Poppins',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8), // reduced from 10
-                    if (md != null)
-                      Text(
-                        _formatTime(md),
-                        style: TextStyle(
-                          color: textColor.withOpacity(0.7),
-                          fontSize: 11, // slightly reduced
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      }
-    } else if (isImage && (imageUrl == null || imageUrl.isEmpty)) {
-      messageWidget = Row(
-        mainAxisAlignment: alignment,
+            );
+      return Row(
+        mainAxisAlignment: isSender
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
-          Flexible(
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 1),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: messageColor,
-                borderRadius: messageBorderRadius,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.purple.withOpacity(0.08),
-                    offset: const Offset(0, 2),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: const Text(
-                '[Image not available]',
-                style: TextStyle(color: Colors.red, fontSize: 14),
-              ),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 290, maxHeight: 290),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: img,
             ),
           ),
         ],
       );
+    } else if (text != null && text.isNotEmpty) {
+      if (isOptimistic) {
+        contentWidget = Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: crossAxisAlignment,
+          children: [
+            Flexible(
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (md != null)
+              Text(
+                _formatTime(md),
+                style: TextStyle(
+                  color: textColor.withOpacity(0.7),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+          ],
+        );
+      } else {
+        contentWidget = Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: crossAxisAlignment,
+          children: [
+            Flexible(
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (md != null)
+              Text(
+                _formatTime(md),
+                style: TextStyle(
+                  color: textColor.withOpacity(0.7),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+          ],
+        );
+      }
+    } else if (isImage && (imageUrl == null || imageUrl.isEmpty)) {
+      contentWidget = const Text(
+        '[Image not available]',
+        style: TextStyle(color: Colors.red, fontSize: 14),
+      );
     } else {
-      messageWidget = const SizedBox.shrink();
+      contentWidget = const SizedBox.shrink();
     }
+
+    // --- Add long-press to show delete popup for own messages ---
+    Widget messageContainer = GestureDetector(
+      onLongPress: !isSender && !isDeleted
+          ? () {
+              _showDeleteMessageDialog(m);
+            }
+          : null,
+      child: Row(
+        mainAxisAlignment: alignment,
+        children: [
+          Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.8,
+            ),
+            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 1),
+            padding: isImage
+                ? null
+                : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            height: isImage && !isOptimistic ? null : null,
+            decoration: BoxDecoration(
+              color: isImage ? messageColor : messageColor,
+              borderRadius: messageBorderRadius,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.purple.withOpacity(0.08),
+                  offset: const Offset(0, 2),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: contentWidget,
+          ),
+        ],
+      ),
+    );
 
     if (dayHeader != null)
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [dayHeader, messageWidget],
+        children: [dayHeader, messageContainer],
       );
-    return messageWidget;
+    return messageContainer;
   }
 
-  // Align image messages as well
+  // Align image messages as well, with proper image fit and box sizing
   Widget _buildImageMessage({
     required String imageUrl,
     required String caption,
@@ -867,7 +1439,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final img = isLocal
         ? Image.file(
             File(imageUrl),
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             errorBuilder: (c, e, s) => Container(
               color: Colors.grey[300],
               child: const Center(child: Icon(Icons.broken_image)),
@@ -875,72 +1447,27 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           )
         : Image.network(
             imageUrl,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             errorBuilder: (c, e, s) => Container(
               color: Colors.grey[300],
               child: const Center(child: Icon(Icons.broken_image)),
             ),
           );
-    final alignment = isSender
-        ? MainAxisAlignment.end
-        : MainAxisAlignment.start;
-    final crossAxisAlignment = isSender
-        ? CrossAxisAlignment.end
-        : CrossAxisAlignment.start;
-    final borderRadius = isSender
-        ? const BorderRadius.only(
-            topLeft: Radius.circular(10),
-            topRight: Radius.circular(6),
-            bottomLeft: Radius.circular(10),
-            bottomRight: Radius.circular(0),
-          )
-        : const BorderRadius.only(
-            topLeft: Radius.circular(6),
-            topRight: Radius.circular(10),
-            bottomLeft: Radius.circular(0),
-            bottomRight: Radius.circular(10),
-          );
-    final color = isSender ? const Color(0xFF7B3FA3) : const Color(0xFF9F6BC1);
+
+    // Add margin so images don't touch each other
     return Row(
-      mainAxisAlignment: alignment,
+      mainAxisAlignment: isSender
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
       children: [
-        Flexible(
-          child: Column(
-            crossAxisAlignment: crossAxisAlignment,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 8, bottom: 2),
-                width: 220,
-                height: 250,
-                decoration: BoxDecoration(
-                  borderRadius: borderRadius,
-                  color: color,
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x1A7B3FA3),
-                      offset: Offset(0, 2),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: ClipRRect(borderRadius: borderRadius, child: img),
-              ),
-              const SizedBox(height: 4),
-              if (time != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    _formatTime(time),
-                    style: TextStyle(
-                      color: const Color(
-                        0xFF3B2357,
-                      ).withOpacity(0.65), // more visible on both backgrounds
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ),
-            ],
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 14, horizontal: 2),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 290, maxHeight: 290),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: img,
+            ),
           ),
         ),
       ],
@@ -965,34 +1492,105 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     ),
     child: Row(
       children: [
-        GestureDetector(
-          onTap: _sendingImage
-              ? null
-              : () async {
-                  await _pickAndSendImage();
+        // Action menu button (right arrow)
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          width: _showActionMenu ? 160 : 52,
+          height: 52,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _showActionMenu = !_showActionMenu;
+                  });
                 },
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3E9FA),
-              shape: BoxShape.circle,
-            ),
-            padding: const EdgeInsets.all(10),
-            child: _sendingImage
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Color(0xFF9F6BC1),
-                      ),
-                    ),
-                  )
-                : const Icon(
-                    PhosphorIconsRegular.image,
-                    color: Color(0xFF9F6BC1),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3E9FA),
+                    shape: BoxShape.circle,
+                  ),
+                  padding: const EdgeInsets.all(10),
+                  child: Icon(
+                    _showActionMenu
+                        ? Icons.close
+                        : Icons.arrow_forward_ios_rounded,
+                    color: const Color(0xFF9F6BC1),
                     size: 24,
                   ),
+                ),
+              ),
+              AnimatedOpacity(
+                opacity: _showActionMenu ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                child: Row(
+                  children: [
+                    if (_showActionMenu) ...[
+                      const SizedBox(width: 8),
+                      // Image icon
+                      GestureDetector(
+                        onTap: _sendingImage
+                            ? null
+                            : () async {
+                                setState(() {
+                                  _showActionMenu = false;
+                                });
+                                await _pickAndSendImage();
+                              },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3E9FA),
+                            shape: BoxShape.circle,
+                          ),
+                          padding: const EdgeInsets.all(10),
+                          child: _sendingImage
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFF9F6BC1),
+                                    ),
+                                  ),
+                                )
+                              : const Icon(
+                                  PhosphorIconsRegular.image,
+                                  color: Color(0xFF9F6BC1),
+                                  size: 24,
+                                ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Proposal icon
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _showActionMenu = false;
+                          });
+                          _showProposalFormDialog();
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3E9FA),
+                            shape: BoxShape.circle,
+                          ),
+                          padding: const EdgeInsets.all(10),
+                          child: const Icon(
+                            Icons.assignment_turned_in_rounded,
+                            color: Color(0xFF9F6BC1),
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(width: 12),
@@ -1113,7 +1711,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         children: [
           const CircleAvatar(
             radius: 20,
-            backgroundColor:  Color(0xFF3B2357),
+            backgroundColor: Color(0xFF3B2357),
             child: Icon(Icons.error, color: Colors.red),
           ),
           const SizedBox(width: 14),
@@ -1212,6 +1810,356 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
+  Widget _buildDateProposalButtons(
+    Map<String, dynamic> m, {
+    bool showAcceptReject = true,
+    bool showModify = true,
+    VoidCallback? onAccepted,
+  }) {
+    bool isLoading = false;
+    String? errorMessage;
+
+    void respond(
+      String responseType, {
+      DateTime? newDate,
+      String? newPlace,
+    }) async {
+      if (isLoading) return;
+      isLoading = true;
+      errorMessage = null;
+
+      try {
+        // Validate responseType
+        const allowedTypes = ['accept', 'reject', 'modify'];
+        if (!allowedTypes.contains(responseType)) {
+          errorMessage = "Invalid response type.";
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invalid response type.')),
+          );
+          return;
+        }
+
+        // Validate modify fields
+        if (responseType == 'modify') {
+          if (newDate == null || newPlace == null || newPlace.trim().isEmpty) {
+            errorMessage =
+                "Please provide both a new date and place to modify.";
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Please provide both a new date and place to modify.',
+                ),
+              ),
+            );
+            return;
+          }
+        }
+
+        // JWT creation
+        dynamic jwt;
+        try {
+          jwt = await account.createJWT();
+        } catch (e) {
+          errorMessage = "Authentication failed. Please try again.";
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(errorMessage!)));
+          return;
+        }
+        final token = jwt.jwt;
+        final Map<String, dynamic> body = {'responseType': responseType};
+        if (responseType == 'modify') {
+          body['newDetails'] = {
+            'date': newDate!.toIso8601String(),
+            'place': newPlace!.trim(),
+          };
+        }
+
+        http.Response res;
+        try {
+          res = await http.post(
+            Uri.parse(
+              'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/chats/${widget.connectionId}/respond-date',
+            ),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(body),
+          );
+        } catch (e) {
+          errorMessage = "Network error. Please check your connection.";
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(errorMessage!)));
+          return;
+        }
+
+        if (res.statusCode == 200) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Date proposal ${responseType}ed successfully.'),
+            ),
+          );
+          if (responseType == 'accept' && onAccepted != null) {
+            onAccepted();
+          }
+          // After responding, refresh proposal status
+          await _fetchDateProposalStatus();
+        } else {
+          // Try to parse error from response
+          String serverError = 'Failed to respond.';
+          try {
+            final data = jsonDecode(res.body);
+            if (data is Map && data['error'] != null) {
+              serverError = data['error'].toString();
+            }
+          } catch (_) {
+            serverError = 'Failed to respond. Server error.';
+          }
+          errorMessage = serverError;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(errorMessage!)));
+        }
+      } catch (e, stack) {
+        // Log error for debugging
+        debugPrint('Error in respond: $e\n$stack');
+        errorMessage = "An unexpected error occurred. Please try again.";
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage!)));
+      } finally {
+        isLoading = false;
+      }
+    }
+
+    void showModifyDialog() {
+      DateTime? selectedDate;
+      TimeOfDay? selectedTime;
+      TextEditingController placeController = TextEditingController();
+      bool localLoading = false;
+
+      String? localError;
+      showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                title: const Text('Modify Proposal'),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextButton.icon(
+                        icon: const Icon(Icons.calendar_today, size: 20),
+                        label: Text(
+                          selectedDate == null
+                              ? 'Select date'
+                              : '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}',
+                        ),
+                        onPressed: localLoading
+                            ? null
+                            : () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime.now(),
+                                  firstDate: DateTime.now(),
+                                  lastDate: DateTime.now().add(
+                                    const Duration(days: 365),
+                                  ),
+                                );
+                                if (picked != null) {
+                                  setState(() {
+                                    selectedDate = picked;
+                                  });
+                                }
+                              },
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        icon: const Icon(Icons.access_time, size: 20),
+                        label: Text(
+                          selectedTime == null
+                              ? 'Select time'
+                              : selectedTime!.format(context),
+                        ),
+                        onPressed: localLoading
+                            ? null
+                            : () async {
+                                final picked = await showTimePicker(
+                                  context: context,
+                                  initialTime: TimeOfDay.now(),
+                                );
+                                if (picked != null) {
+                                  setState(() {
+                                    selectedTime = picked;
+                                  });
+                                }
+                              },
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: placeController,
+                        decoration: const InputDecoration(
+                          labelText: 'Place',
+                          border: OutlineInputBorder(),
+                        ),
+                        enabled: !localLoading,
+                      ),
+                      const SizedBox(height: 12),
+                      if (localError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            localError!,
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: localLoading
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: localLoading
+                        ? null
+                        : () async {
+                            if (selectedDate == null ||
+                                selectedTime == null ||
+                                placeController.text.trim().isEmpty) {
+                              setState(() {
+                                localError =
+                                    "Please select date, time, and enter a place.";
+                              });
+                              return;
+                            }
+                            setState(() {
+                              localLoading = true;
+                              localError = null;
+                            });
+                            final DateTime combinedDateTime = DateTime(
+                              selectedDate!.year,
+                              selectedDate!.month,
+                              selectedDate!.day,
+                              selectedTime!.hour,
+                              selectedTime!.minute,
+                            );
+                            respond(
+                              'modify',
+                              newDate: combinedDateTime,
+                              newPlace: placeController.text.trim(),
+                            );
+                            Navigator.of(context).pop();
+                          },
+                    child: localLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Send'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              if (showAcceptReject) ...[
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7B3FA3),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 10,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  onPressed: isLoading
+                      ? null
+                      : () {
+                          respond('accept');
+                          if (onAccepted != null) {
+                            onAccepted();
+                          }
+                        },
+                  child: const Text(
+                    'Accept',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFBFA2E6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 10,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onPressed: isLoading ? null : () => respond('reject'),
+                  child: const Text('Reject'),
+                ),
+              ],
+              if (showModify) ...[
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF3E9FA),
+                    foregroundColor: const Color(0xFF7B3FA3),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 10,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onPressed: isLoading ? null : showModifyDialog,
+                  child: const Text('Modify'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: Colors.white,
@@ -1230,9 +2178,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       ),
       titleSpacing: 0,
       title: _buildAppBarTitle(),
-      actions: [
-        _buildMessageCountCircle(),
-      ],
+      actions: [_buildMessageCountCircle()],
     ),
     body: WillPopScope(
       onWillPop: () async {
@@ -1345,10 +2291,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                         '${localPrev.year}-${localPrev.month}-${localPrev.day}';
                                   }
                                 }
-                                return _buildMessage(
-                                  _messages[i],
-                                  previousMessageDate: prevDate,
-                                  previousDayKey: prevDayKey,
+                                return Column(
+                                  children: [
+                                    _buildMessage(
+                                      _messages[i],
+                                      previousMessageDate: prevDate,
+                                      previousDayKey: prevDayKey,
+                                    ),
+                                    const SizedBox(height: 14),
+                                  ],
                                 );
                               },
                             )),
