@@ -264,57 +264,50 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
         ),
         iconTheme: IconThemeData(color: themeColor),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 32),
-              Text(
-                "Upload at least 4 images of yourself",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: themeColor,
-                  fontFamily: 'SF Pro Display',
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "Pick your best photos. You can add up to 6 images.",
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.black.withOpacity(0.7),
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-              const SizedBox(height: 28),
-              _buildImageGrid(),
-              const SizedBox(height: 48),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accentColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 32),
+                    Text(
+                      "Upload at least 4 images of yourself",
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: themeColor,
+                        fontFamily: 'SF Pro Display',
+                        letterSpacing: -0.5,
+                      ),
                     ),
-                    elevation: 3,
-                  ),
-                  child: _loading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            strokeWidth: 3,
+                    const SizedBox(height: 10),
+                    Text(
+                      "Pick your best photos. You can add up to 6 images.",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black.withOpacity(0.7),
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    _buildImageGrid(),
+                    const SizedBox(height: 48),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _submit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: accentColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                        )
-                      : const Text(
+                          elevation: 3,
+                        ),
+                        child: const Text(
                           "Continue",
                           style: TextStyle(
                             fontSize: 18,
@@ -324,13 +317,13 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
                             color: Colors.white,
                           ),
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
                 ),
               ),
-              const SizedBox(height: 32),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }

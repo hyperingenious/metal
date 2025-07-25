@@ -252,7 +252,7 @@ class _AddMinMaxAgeScreenState extends State<AddMinMaxAgeScreen> {
                                   width: double.infinity,
                                   height: 56,
                                   child: ElevatedButton(
-                                    onPressed: _loading ? null : _submit, // Disable when loading
+                                    onPressed: _submit,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: accentColor,
                                       foregroundColor: Colors.white,
@@ -266,16 +266,7 @@ class _AddMinMaxAgeScreenState extends State<AddMinMaxAgeScreen> {
                                       ),
                                       elevation: 2,
                                     ),
-                                    child: _loading
-                                        ? const SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: CircularProgressIndicator(
-                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                              strokeWidth: 3,
-                                            ),
-                                          )
-                                        : const Text("Continue"),
+                                    child: const Text("Continue"),
                                   ),
                                 ),
                                 const SizedBox(height: 12),

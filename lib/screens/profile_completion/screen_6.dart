@@ -365,7 +365,7 @@ class _AddPreferredMaxDistAndHobbiesScreenState
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: _loading ? null : _submit, // Disable when loading
+                          onPressed: _submit,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: accentColor,
                             shape: RoundedRectangleBorder(
@@ -373,25 +373,16 @@ class _AddPreferredMaxDistAndHobbiesScreenState
                             ),
                             elevation: 3,
                           ),
-                          child: _loading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    strokeWidth: 3,
-                                  ),
-                                )
-                              : const Text(
-                                  "Continue",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    fontFamily: 'SF Pro Display',
-                                    letterSpacing: 0.1,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                          child: const Text(
+                            "Continue",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'SF Pro Display',
+                              letterSpacing: 0.1,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       ),
                     ),

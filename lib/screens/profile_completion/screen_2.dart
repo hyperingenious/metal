@@ -24,12 +24,7 @@ class _AddHeightScreenState extends State<AddHeightScreen> {
 
   final List<int> heightList = List.generate(121, (i) => 130 + i); // 130–250 cm
 
-  bool _isLoading = false;
-
   Future<void> _submit() async {
-    setState(() {
-      _isLoading = true;
-    });
     try {
       final user = await account.get();
       final userId = user.$id;
@@ -75,18 +70,11 @@ class _AddHeightScreenState extends State<AddHeightScreen> {
         );
       }
 
-      setState(() {
-        _isLoading = false;
-      });
-
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => AddGenderScreen()),
       );
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
@@ -225,7 +213,7 @@ class _AddHeightScreenState extends State<AddHeightScreen> {
                             width: double.infinity,
                             height: 56,
                             child: ElevatedButton(
-                              onPressed: _isLoading ? null : _submit,
+                              onPressed: _submit,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: accentColor,
                                 foregroundColor: Colors.white,
@@ -238,16 +226,7 @@ class _AddHeightScreenState extends State<AddHeightScreen> {
                                 ),
                                 elevation: 2,
                               ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        strokeWidth: 2.5,
-                                      ),
-                                    )
-                                  : const Text("Continue"),
+                              child: const Text("Continue"),
                             ),
                           ),
                           const SizedBox(height: 12),
