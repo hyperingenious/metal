@@ -3,10 +3,10 @@ import 'package:appwrite/appwrite.dart';
 final client = Client()
   ..setEndpoint('https://fra.cloud.appwrite.io/v1')
   ..setProject('685a8d7a001b583de71d')
-  ..setSelfSigned(status: true)
-  ..setDevKey(
-    '60f0d597a14d8eb70e71879eb6aebdd76668a2f049f65fcda32401625065c18f2f1bcf576b38cf9dfcc5f70d172ba71da123ec5515b31662bacac60d16e8a63b6cb905912ead749d6281c5b09975872a903f22cc2a3820535d95b33b71df8da810a6ce53d987ca7fcb5494048e9a39520f0e94760c6777ce3e86587ddb085622',
-  );
+  ..setSelfSigned(status: true);
+// ..setDevKey(
+// '706cc3b4fb12ca530f33f3a684be1db814cbc2ee3240ae7cf9d322c2733fe8d4add5bc84f576f15f1f6ce009cf0949b496633b288c33553c527fece4956ca3388b4b11ce96557ea8f64190f36138dce0427d9d5fc2af5d8e7986b828ee9950b23596a03fd4766750778d8d73b6330c69146d9551c1d0ec7d44786d43f1946f19',
+// );
 
 final account = Account(client);
 final databases = Databases(client);
