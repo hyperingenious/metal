@@ -6,6 +6,7 @@ import '../../appwrite/appwrite.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../profile_check.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -16,11 +17,11 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List<Map<String, dynamic>> _notifications = [];
-  List<Map<String, dynamic>> _sentInvitations = []; // <-- NEW
+  List<Map<String, dynamic>> _sentInvitations = [];
   bool _loading = true;
-  bool _loadingSent = true; // <-- NEW
+  bool _loadingSent = true;
   String? _error;
-  String? _errorSent; // <-- NEW
+  String? _errorSent;
   bool _actionInProgress = false;
 
   static const String _cacheKey = 'cached_notifications';
@@ -30,7 +31,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     super.initState();
     _loadCachedNotifications();
     _fetchNotificationsInBackground();
-    _fetchSentInvitations(); // <-- NEW
+    _fetchSentInvitations();
   }
 
   Future<void> _loadCachedNotifications() async {
@@ -39,14 +40,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (cached != null) {
       try {
         final List<dynamic> decoded = jsonDecode(cached);
-        final List<Map<String, dynamic>> notifications = decoded
-            .cast<Map<String, dynamic>>();
+        final List<Map<String, dynamic>> notifications = decoded.cast<Map<String, dynamic>>();
         setState(() {
           _notifications = notifications;
           _loading = false;
         });
       } catch (_) {
-        // Ignore cache errors, fallback to loading
         setState(() {
           _loading = true;
         });
@@ -66,7 +65,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _fetchNotificationsInBackground() {
-    // Fetch in background, update UI and cache when done
     _fetchNotifications(showLoading: false);
   }
 
@@ -153,8 +151,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
         final userName =
             (fromUserDoc != null && fromUserDoc is appwrite_models.Document)
-            ? fromUserDoc.data['name']
-            : 'Unknown';
+                ? fromUserDoc.data['name']
+                : 'Unknown';
         final userImg = (fromUserImage.documents.isNotEmpty)
             ? fromUserImage.documents[0].data['image_1']
             : null;
@@ -177,7 +175,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           );
         }
 
-        // --- ADD THIS: skip if no connection doc found ---
         if (connectionsDoc.documents.isEmpty) {
           continue;
         }
@@ -191,8 +188,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               : null,
           'fromUserId': fromUserId,
           'type': doc.data['type'],
-          'icon': 'mailbox', // instead of PhosphorIconsFill.mailbox
-          'iconBg': 0xFF6D4B86, // instead of Color(0xFF6D4B86)
+          'icon': 'mailbox',
+          'iconBg': 0xFF6D4B86,
           'userImg': userImg,
           'userName': userName,
           'message': doc.data['payload']?.toString() ?? '',
@@ -217,7 +214,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  // --- NEW: Fetch sent invitations ---
   Future<void> _fetchSentInvitations() async {
     setState(() {
       _loadingSent = true;
@@ -230,7 +226,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       debugPrint('Current userId: $userId');
       if (userId == null) throw Exception('User not found or not logged in.');
 
-      // 1. Get connections where status is pending and senderId is current user
       final result = await databases.listDocuments(
         databaseId: '685a90fa0009384c5189',
         collectionId: '685a95f5001cadd0cfc3',
@@ -253,7 +248,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final List<Map<String, dynamic>> sentInvitations = [];
 
       for (final doc in result.documents) {
-        // receiverId is an object, get its id and name
         final receiverObj = doc.data['receiverId'];
         String receiverId = '';
         String receiverName = '';
@@ -264,7 +258,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           debugPrint('ReceiverId from doc: $receiverId, name: $receiverName');
         }
 
-        // If name is not present, fallback to fetching from user collection
         if (receiverName.isEmpty && receiverId.isNotEmpty) {
           try {
             final userDoc = await databases.getDocument(
@@ -275,7 +268,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 Query.select(['name']),
               ],
             );
-            debugPrint('Fetched userDoc for receiverId $receiverId: ${userDoc?.data}');
+            debugPrint(
+              'Fetched userDoc for receiverId $receiverId: ${userDoc?.data}',
+            );
             if (userDoc != null && userDoc.data['name'] != null) {
               receiverName = userDoc.data['name'];
             }
@@ -284,7 +279,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           }
         }
 
-        // Get receiver's image from image collection
         String? receiverImg;
         if (receiverId.isNotEmpty) {
           try {
@@ -322,7 +316,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           'receiverImg': receiverImg,
           'status': doc.data['status'],
           'time': _formatTime(doc.$createdAt ?? ''),
-          'connectionId': doc.$id, // <-- add this line
+          'connectionId': doc.$id,
         };
         debugPrint('Final invitation object: $invitation');
         sentInvitations.add(invitation);
@@ -342,7 +336,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  // --- Accept Invitation logic ---
   Future<void> _handleAcceptInvitation({
     required BuildContext context,
     required String connectionId,
@@ -351,7 +344,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     setState(() {
       _actionInProgress = true;
     });
-    // Use showGeneralDialog to avoid dark screen if context is lost
     showGeneralDialog(
       context: context,
       barrierDismissible: false,
@@ -406,9 +398,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
     }
   }
-  // ------------------------------------------------------------
 
-  // --- Moved and fixed the onPressed for Reject button here ---
   Future<void> _handleRejectInvitation({
     required BuildContext context,
     required String connectionId,
@@ -477,9 +467,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
     }
   }
-  // ------------------------------------------------------------
 
-  Future<void> _deleteSentInvitation(String connectionId, BuildContext context) async {
+  Future<void> _deleteSentInvitation(
+    String connectionId,
+    BuildContext context,
+  ) async {
     setState(() {
       _actionInProgress = true;
     });
@@ -489,9 +481,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         collectionId: '685a95f5001cadd0cfc3',
         documentId: connectionId,
       );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invitation removed')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invitation removed')));
       await _fetchSentInvitations();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -511,7 +503,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(100), // Increased for tabs
+          preferredSize: const Size.fromHeight(100),
           child: AppBar(
             backgroundColor: Colors.white,
             elevation: 0,
@@ -553,353 +545,370 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
         body: TabBarView(
           children: [
-            // --- Received Tab (current code) ---
+            // --- Received Tab ---
             _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
-                ? Center(
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  )
-                : _notifications.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No notifications yet.',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w400,
-                        fontSize: 15,
-                        color: Color(0xFF6D4B86),
-                      ),
-                    ),
-                  )
-                : Builder(
-                    builder: (context) {
-                      // Filter out notifications that should not be shown
-                      final activeNotifications = _notifications.where((notif) {
-                        if (notif['type'] == 'invite' &&
-                            (notif['inviteStatus'] == 'declined' ||
-                                notif['inviteStatus'] == 'chat_active')) {
-                          return false;
-                        }
-                        return true;
-                      }).toList();
-
-                      if (activeNotifications.isEmpty) {
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 32.0),
+                    ? Center(
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      )
+                    : _notifications.isEmpty
+                        ? const Center(
                             child: Text(
-                              "No notifications.",
-                              textAlign: TextAlign.center,
+                              'No notifications yet.',
                               style: TextStyle(
                                 fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
+                                fontWeight: FontWeight.w400,
+                                fontSize: 15,
                                 color: Color(0xFF6D4B86),
                               ),
                             ),
-                          ),
-                        );
-                      }
+                          )
+                        : Builder(
+                            builder: (context) {
+                              final activeNotifications = _notifications.where((notif) {
+                                if (notif['type'] == 'invite' &&
+                                    (notif['inviteStatus'] == 'declined' ||
+                                        notif['inviteStatus'] == 'chat_active')) {
+                                  return false;
+                                }
+                                return true;
+                              }).toList();
 
-                      return RefreshIndicator(
-                        onRefresh: () async {
-                          await _fetchNotifications();
-                        },
-                        child: ListView.separated(
-                          padding: const EdgeInsets.only(top: 8),
-                          itemCount: activeNotifications.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 2),
-                          itemBuilder: (context, index) {
-                            final notif = activeNotifications[index];
-
-                            return Container(
-                              color: notif['highlight'] == true
-                                  ? const Color(0xFFD6BEEA)
-                                  : Colors.transparent,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 0,
-                                  vertical: 0,
-                                ),
-                                child: Column(
-                                  children: [
-                                    ListTile(
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 20,
-                                            vertical: 2,
-                                          ),
-                                      leading: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            decoration: BoxDecoration(
-                                              color: Color(
-                                                notif['iconBg'] as int,
-                                              ),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            padding: const EdgeInsets.all(8),
-                                            child: PhosphorIcon(
-                                              _iconFromString(
-                                                notif['icon'] as String,
-                                              ),
-                                              color: Colors.white,
-                                              size: 22,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          CircleAvatar(
-                                            radius: 20,
-                                            backgroundImage:
-                                                (notif['userImg'] is String)
-                                                ? NetworkImage(
-                                                    notif['userImg'] as String,
-                                                  )
-                                                : null,
-                                            child: notif['userImg'] == null
-                                                ? const Icon(
-                                                    Icons.person,
-                                                    color: Color(0xFF6D4B86),
-                                                  )
-                                                : null,
-                                          ),
-                                        ],
+                              if (activeNotifications.isEmpty) {
+                                return const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 32.0),
+                                    child: Text(
+                                      "No notifications.",
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                        color: Color(0xFF6D4B86),
                                       ),
-                                      title: Text(
-                                        notif['userName'] as String,
-                                        style: const TextStyle(
-                                          fontFamily: 'Poppins',
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 15,
-                                          color: Color(0xFF3B2357),
-                                        ),
-                                      ),
-                                      subtitle: Text(
-                                        notif['message'] as String,
-                                        style: const TextStyle(
-                                          fontFamily: 'Poppins',
-                                          fontWeight: FontWeight.w400,
-                                          fontSize: 12,
-                                          color: Color(0xFF6D4B86),
-                                        ),
-                                      ),
-                                      trailing: Text(
-                                        notif['time'] as String,
-                                        style: const TextStyle(
-                                          fontFamily: 'Poppins',
-                                          fontWeight: FontWeight.w400,
-                                          fontSize: 11,
-                                          color: Color(0xFF6D4B86),
-                                        ),
-                                      ),
-                                      horizontalTitleGap: 12,
-                                      minLeadingWidth: 0,
-                                      onTap: () {},
                                     ),
-                                    if (notif['type'] == 'invite' &&
-                                        notif['inviteStatus'] == 'pending')
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: 92,
-                                          right: 20,
-                                          bottom: 8,
-                                          top: 0,
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.end,
-                                          children: [
-                                            TextButton(
-                                              style: TextButton.styleFrom(
-                                                foregroundColor: const Color(
-                                                  0xFF388E3C,
-                                                ), // pastel green text
-                                                textStyle: const TextStyle(
-                                                  fontFamily: 'Poppins',
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 13,
-                                                ),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 16,
-                                                      vertical: 6,
-                                                    ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                              ),
-                                              onPressed: _actionInProgress
-                                                  ? null
-                                                  : () {
-                                                      final connectionId =
-                                                          notif['connectionId'];
-                                                      if (connectionId !=
-                                                          null) {
-                                                        _handleAcceptInvitation(
-                                                          context: context,
-                                                          connectionId:
-                                                              connectionId,
-                                                        );
-                                                      }
-                                                    },
-                                              child: const Text('Accept'),
+                                  ),
+                                );
+                              }
+
+                              return RefreshIndicator(
+                                onRefresh: () async {
+                                  await _fetchNotifications();
+                                },
+                                child: ListView.separated(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  itemCount: activeNotifications.length,
+                                  separatorBuilder: (_, __) => const SizedBox(height: 2),
+                                  itemBuilder: (context, index) {
+                                    final notif = activeNotifications[index];
+
+                                    // Wrap the card in InkWell to make the whole card clickable
+                                    return InkWell(
+                                      onTap: () {
+                                        final userId = notif['fromUserId'];
+                                        if (userId != null && userId.isNotEmpty) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ProfileCheck(userId: userId),
                                             ),
-                                            const SizedBox(width: 10),
-                                            TextButton(
-                                              style: TextButton.styleFrom(
-                                                foregroundColor: const Color(
-                                                  0xFFB85C5C,
-                                                ), // pastel red text
-                                                textStyle: const TextStyle(
-                                                  fontFamily: 'Poppins',
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 13,
+                                          );
+                                        }
+                                      },
+                                      child: Container(
+                                        color: notif['highlight'] == true
+                                            ? const Color(0xFFD6BEEA)
+                                            : Colors.transparent,
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 0,
+                                            vertical: 0,
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              ListTile(
+                                                contentPadding: const EdgeInsets.symmetric(
+                                                  horizontal: 20,
+                                                  vertical: 2,
                                                 ),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 16,
-                                                      vertical: 6,
+                                                leading: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Container(
+                                                      decoration: BoxDecoration(
+                                                        color: Color(
+                                                          notif['iconBg'] as int,
+                                                        ),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      padding: const EdgeInsets.all(8),
+                                                      child: PhosphorIcon(
+                                                        _iconFromString(
+                                                          notif['icon'] as String,
+                                                        ),
+                                                        color: Colors.white,
+                                                        size: 22,
+                                                      ),
                                                     ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
+                                                    const SizedBox(width: 12),
+                                                    CircleAvatar(
+                                                      radius: 20,
+                                                      backgroundImage: (notif['userImg'] is String)
+                                                          ? NetworkImage(
+                                                              notif['userImg'] as String,
+                                                            )
+                                                          : null,
+                                                      child: notif['userImg'] == null
+                                                          ? const Icon(
+                                                              Icons.person,
+                                                              color: Color(0xFF6D4B86),
+                                                            )
+                                                          : null,
+                                                    ),
+                                                  ],
                                                 ),
+                                                title: Text(
+                                                  notif['userName'] as String,
+                                                  style: const TextStyle(
+                                                    fontFamily: 'Poppins',
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 15,
+                                                    color: Color(0xFF3B2357),
+                                                  ),
+                                                ),
+                                                subtitle: Text(
+                                                  notif['message'] as String,
+                                                  style: const TextStyle(
+                                                    fontFamily: 'Poppins',
+                                                    fontWeight: FontWeight.w400,
+                                                    fontSize: 12,
+                                                    color: Color(0xFF6D4B86),
+                                                  ),
+                                                ),
+                                                trailing: Text(
+                                                  notif['time'] as String,
+                                                  style: const TextStyle(
+                                                    fontFamily: 'Poppins',
+                                                    fontWeight: FontWeight.w400,
+                                                    fontSize: 11,
+                                                    color: Color(0xFF6D4B86),
+                                                  ),
+                                                ),
+                                                horizontalTitleGap: 12,
+                                                minLeadingWidth: 0,
+                                                // Remove onTap from ListTile, handled by InkWell
                                               ),
-                                              onPressed: _actionInProgress
-                                                  ? null
-                                                  : () {
-                                                      final connectionId =
-                                                          notif['connectionId'];
-                                                      final receiverUserId =
-                                                          notif['fromUserId'];
-                                                      if (connectionId !=
-                                                              null &&
-                                                          receiverUserId !=
-                                                              null) {
-                                                        _handleRejectInvitation(
-                                                          context: context,
-                                                          connectionId:
-                                                              connectionId,
-                                                          receiverUserId:
-                                                              receiverUserId,
-                                                        );
-                                                      }
-                                                    },
-                                              child: const Text('Reject'),
-                                            ),
-                                          ],
+                                              if (notif['type'] == 'invite' &&
+                                                  notif['inviteStatus'] == 'pending')
+                                                Padding(
+                                                  padding: const EdgeInsets.only(
+                                                    left: 92,
+                                                    right: 20,
+                                                    bottom: 8,
+                                                    top: 0,
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisAlignment: MainAxisAlignment.end,
+                                                    children: [
+                                                      TextButton(
+                                                        style: TextButton.styleFrom(
+                                                          foregroundColor: const Color(
+                                                            0xFF388E3C,
+                                                          ),
+                                                          textStyle: const TextStyle(
+                                                            fontFamily: 'Poppins',
+                                                            fontWeight: FontWeight.w600,
+                                                            fontSize: 13,
+                                                          ),
+                                                          padding: const EdgeInsets.symmetric(
+                                                            horizontal: 16,
+                                                            vertical: 6,
+                                                          ),
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius: BorderRadius.circular(8),
+                                                          ),
+                                                        ),
+                                                        onPressed: _actionInProgress
+                                                            ? null
+                                                            : () {
+                                                                final connectionId = notif['connectionId'];
+                                                                if (connectionId != null) {
+                                                                  _handleAcceptInvitation(
+                                                                    context: context,
+                                                                    connectionId: connectionId,
+                                                                  );
+                                                                }
+                                                              },
+                                                        child: const Text('Accept'),
+                                                      ),
+                                                      const SizedBox(width: 10),
+                                                      TextButton(
+                                                        style: TextButton.styleFrom(
+                                                          foregroundColor: const Color(
+                                                            0xFFB85C5C,
+                                                          ),
+                                                          textStyle: const TextStyle(
+                                                            fontFamily: 'Poppins',
+                                                            fontWeight: FontWeight.w600,
+                                                            fontSize: 13,
+                                                          ),
+                                                          padding: const EdgeInsets.symmetric(
+                                                            horizontal: 16,
+                                                            vertical: 6,
+                                                          ),
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius: BorderRadius.circular(8),
+                                                          ),
+                                                        ),
+                                                        onPressed: _actionInProgress
+                                                            ? null
+                                                            : () {
+                                                                final connectionId = notif['connectionId'];
+                                                                final receiverUserId = notif['fromUserId'];
+                                                                if (connectionId != null && receiverUserId != null) {
+                                                                  _handleRejectInvitation(
+                                                                    context: context,
+                                                                    connectionId: connectionId,
+                                                                    receiverUserId: receiverUserId,
+                                                                  );
+                                                                }
+                                                              },
+                                                        child: const Text('Reject'),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                  ],
+                                    );
+                                  },
                                 ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-            // --- Sent Tab (NEW) ---
+                              );
+                            },
+                          ),
+            // --- Sent Tab ---
             _loadingSent
                 ? const Center(child: CircularProgressIndicator())
                 : _errorSent != null
-                ? Center(
-                    child: Text(
-                      _errorSent!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  )
-                : _sentInvitations.isEmpty
-                ? const SizedBox.shrink()
-                : RefreshIndicator(
-                    onRefresh: () async {
-                      await _fetchSentInvitations();
-                    },
-                    child: ListView.separated(
-                      padding: const EdgeInsets.only(top: 8),
-                      itemCount: _sentInvitations.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 2),
-                      itemBuilder: (context, index) {
-                        final sent = _sentInvitations[index];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            radius: 20,
-                            backgroundImage: (sent['receiverImg'] is String)
-                                ? NetworkImage(sent['receiverImg'])
-                                : null,
-                            child: sent['receiverImg'] == null
-                                ? const Icon(
-                                    Icons.person,
-                                    color: Color(0xFF6D4B86),
-                                  )
-                                : null,
-                          ),
-                          title: (sent['receiverName'] as String).isNotEmpty
-                              ? Text(
-                                  sent['receiverName'] as String,
-                                  style: const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 15,
-                                    color: Color(0xFF3B2357),
+                    ? Center(
+                        child: Text(
+                          _errorSent!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      )
+                    : _sentInvitations.isEmpty
+                        ? const SizedBox.shrink()
+                        : RefreshIndicator(
+                            onRefresh: () async {
+                              await _fetchSentInvitations();
+                            },
+                            child: ListView.separated(
+                              padding: const EdgeInsets.only(top: 8),
+                              itemCount: _sentInvitations.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 2),
+                              itemBuilder: (context, index) {
+                                final sent = _sentInvitations[index];
+                                // Make the whole card clickable for profile
+                                return InkWell(
+                                  onTap: () {
+                                    final userId = sent['receiverId'];
+                                    if (userId != null && userId.isNotEmpty) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ProfileCheck(userId: userId),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  onLongPress: () async {
+                                    final shouldDelete = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text('Remove Invitation?'),
+                                        content: const Text(
+                                          'Do you want to remove this invitation?',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.of(context).pop(false),
+                                            child: const Text('Cancel'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () => Navigator.of(context).pop(true),
+                                            child: const Text(
+                                              'Delete',
+                                              style: TextStyle(color: Colors.red),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (shouldDelete == true) {
+                                      final connectionId = sent['connectionId'];
+                                      if (connectionId != null && connectionId.isNotEmpty) {
+                                        await _deleteSentInvitation(
+                                          connectionId,
+                                          context,
+                                        );
+                                      }
+                                    }
+                                  },
+                                  child: ListTile(
+                                    leading: CircleAvatar(
+                                      radius: 20,
+                                      backgroundImage: (sent['receiverImg'] is String)
+                                          ? NetworkImage(sent['receiverImg'])
+                                          : null,
+                                      child: sent['receiverImg'] == null
+                                          ? const Icon(
+                                              Icons.person,
+                                              color: Color(0xFF6D4B86),
+                                            )
+                                          : null,
+                                    ),
+                                    title: (sent['receiverName'] as String).isNotEmpty
+                                        ? Text(
+                                            sent['receiverName'] as String,
+                                            style: const TextStyle(
+                                              fontFamily: 'Poppins',
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 15,
+                                              color: Color(0xFF3B2357),
+                                            ),
+                                          )
+                                        : null,
+                                    subtitle: Text(
+                                      'Status: ${sent['status']}',
+                                      style: const TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.w400,
+                                        fontSize: 12,
+                                        color: Color(0xFF6D4B86),
+                                      ),
+                                    ),
+                                    trailing: Text(
+                                      sent['time'] as String,
+                                      style: const TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.w400,
+                                        fontSize: 11,
+                                        color: Color(0xFF6D4B86),
+                                      ),
+                                    ),
+                                    // Remove onLongPress from ListTile, handled by InkWell
                                   ),
-                                )
-                              : null,
-                          subtitle: Text(
-                            'Status: ${sent['status']}',
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w400,
-                              fontSize: 12,
-                              color: Color(0xFF6D4B86),
+                                );
+                              },
                             ),
                           ),
-                          trailing: Text(
-                            sent['time'] as String,
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w400,
-                              fontSize: 11,
-                              color: Color(0xFF6D4B86),
-                            ),
-                          ),
-                          // --- Add this for long-press delete ---
-                          onLongPress: () async {
-                            final shouldDelete = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Remove Invitation?'),
-                                content: const Text('Do you want to remove this invitation?'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.of(context).pop(false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.of(context).pop(true),
-                                    child: const Text('Delete', style: TextStyle(color: Colors.red)),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (shouldDelete == true) {
-                              final connectionId = sent['connectionId'];
-                              if (connectionId != null && connectionId.isNotEmpty) {
-                                await _deleteSentInvitation(connectionId, context);
-                              }
-                            }
-                          },
-                        );
-                      },
-                    ),
-                  ),
           ],
         ),
       ),
@@ -913,6 +922,6 @@ IconData _iconFromString(String iconName) {
       return PhosphorIconsFill.mailbox;
     // add more cases as needed
     default:
-      return Icons.notifications; // fallback
+      return Icons.notifications;
   }
 }

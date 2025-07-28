@@ -82,7 +82,12 @@ Future<List<Map<String, dynamic>>> fetchActiveChatsWithLastMessage() async {
               : (senderName.isNotEmpty
                     ? senderName
                     : (chat['partnerName'] ?? 'Someone'));
-          final lastMessageText = lastMsg['message'] ?? '[No message]';
+          
+          // Check if the message is deleted
+          final bool isDeleted = lastMsg['is_deleted'] == true;
+          final lastMessageText = isDeleted 
+              ? 'Message deleted'
+              : (lastMsg['message'] ?? '[No message]');
           chat['lastMessageDisplay'] = '$displaySender: $lastMessageText';
         } else {
           chat['lastMessageDisplay'] = 'No messages yet';
@@ -147,6 +152,16 @@ class _ChatsScreenState extends State<ChatsScreen> {
     _loadCachedChatsAndFetch();
   }
 
+  // Add this method to refresh chats when returning from chat screen
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh chats when the screen becomes visible again
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCachedChatsAndFetch();
+    });
+  }
+
   /// Loads cached chats immediately, then fetches fresh chats in the background.
   Future<void> _loadCachedChatsAndFetch() async {
     // 1. Try to load cached chats for instant display
@@ -209,21 +224,41 @@ class _ChatsScreenState extends State<ChatsScreen> {
       _loading = true;
     });
     try {
+      // First, refresh the chat list to ensure we have the latest data
+      await _loadCachedChatsAndFetch();
+      
+      // Verify the connection still exists in the refreshed list
+      final chatExists = _chats.any((chat) => chat['connectionId'] == connectionId);
+      if (!chatExists) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Connection not found or already deleted')),
+          );
+        }
+        setState(() {
+          _loading = false;
+        });
+        return;
+      }
+
       final databases = Databases(client);
       const String dbId = '685a90fa0009384c5189';
-      const String connectionsCollectionId = '685a95f5001cadd0cfc3'; // <-- Replace with your actual collection ID
+      const String connectionsCollectionId = '685a95f5001cadd0cfc3';
 
       await databases.deleteDocument(
         databaseId: dbId,
         collectionId: connectionsCollectionId,
         documentId: connectionId,
       );
+      
       // Optionally, show a snackbar
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Connection deleted')),
         );
       }
+      
+      // Refresh the chat list after successful deletion
       await _loadCachedChatsAndFetch();
     } catch (e) {
       if (mounted) {
@@ -446,11 +481,12 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       shadowColor: const Color(0xFFB96AFF).withOpacity(0.08),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(20),
-                        onTap: () {
+                        onTap: () async {
                           final String userId = chat['partnerId'] ?? '';
-                          final String connectionId =
-                              chat['connectionId'] ?? '';
-                          Navigator.push(
+                          final String connectionId = chat['connectionId'] ?? '';
+                          
+                          // Navigate to chat screen and wait for result
+                          final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => ChatScreen(
@@ -459,6 +495,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
                               ),
                             ),
                           );
+                          
+                          // Refresh chat list when returning from chat screen
+                          if (result == true || mounted) {
+                            await _loadCachedChatsAndFetch();
+                          }
                         },
                         onLongPress: () {
                           _showDeleteConnectionModal(context, chat['connectionId']);

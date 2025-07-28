@@ -170,18 +170,77 @@ class _ExploreScreenState extends State<ExploreScreen>
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
         if (loadedProfiles.isNotEmpty) {
-          setState(() {
-            _profiles = loadedProfiles;
-            _currentProfileIndex = 0;
-            _currentPage = page;
-          });
-          return true;
+          // Filter out profiles that have existing connections
+          final filteredProfiles = await _filterProfilesWithExistingConnections(loadedProfiles);
+          
+          if (filteredProfiles.isNotEmpty) {
+            setState(() {
+              _profiles = filteredProfiles;
+              _currentProfileIndex = 0;
+              _currentPage = page;
+            });
+            return true;
+          } else {
+            // If all profiles were filtered out, clear the cache and return false
+            await _saveProfilesToLocal([], page);
+            return false;
+          }
         }
       }
     } catch (e) {
       debugPrint('Error loading profiles from local: $e');
     }
     return false;
+  }
+
+  /// Filter out profiles that have existing connections with the current user
+  Future<List<Map<String, dynamic>>> _filterProfilesWithExistingConnections(
+    List<Map<String, dynamic>> profiles
+  ) async {
+    try {
+      // Get current user id
+      final user = await account.get();
+      final String currentUserId = user.$id;
+      
+      // Get all connections where current user is either sender or receiver
+      final connectionsResult = await databases.listDocuments(
+        databaseId: '685a90fa0009384c5189',
+        collectionId: '685a95f5001cadd0cfc3',
+        queries: [
+          Query.or([
+            Query.equal('senderId', currentUserId),
+            Query.equal('receiverId', currentUserId),
+          ]),
+        ],
+      );
+
+      // Extract all connected user IDs
+      final Set<String> connectedUserIds = {};
+      for (final doc in connectionsResult.documents) {
+        final senderId = doc.data['senderId']?.toString();
+        final receiverId = doc.data['receiverId']?.toString();
+        
+        // Add the other user's ID (not the current user's)
+        if (senderId == currentUserId && receiverId != null) {
+          connectedUserIds.add(receiverId);
+        } else if (receiverId == currentUserId && senderId != null) {
+          connectedUserIds.add(senderId);
+        }
+      }
+
+      // Filter out profiles that have connections
+      final filteredProfiles = profiles.where((profile) {
+        final profileUserId = profile['userId']?.toString();
+        return profileUserId != null && !connectedUserIds.contains(profileUserId);
+      }).toList();
+
+      debugPrint('Filtered ${profiles.length - filteredProfiles.length} profiles with existing connections');
+      return filteredProfiles;
+    } catch (e) {
+      debugPrint('Error filtering profiles with connections: $e');
+      // If there's an error, return the original profiles to avoid blocking the UI
+      return profiles;
+    }
   }
 
   Future<void> _saveProfilesToLocal(
@@ -229,12 +288,16 @@ class _ExploreScreenState extends State<ExploreScreen>
               List<Map<String, dynamic>>.from(
                 profilesList.map((e) => Map<String, dynamic>.from(e)),
               );
+          
+          // Filter out profiles with existing connections before caching
+          final filteredProfiles = await _filterProfilesWithExistingConnections(newProfiles);
+          
           // Save to local storage
-          await _saveProfilesToLocal(newProfiles, page);
+          await _saveProfilesToLocal(filteredProfiles, page);
           // If user is still on this page, update UI with new data
           if (mounted && page == _currentPage) {
             setState(() {
-              _profiles = newProfiles;
+              _profiles = filteredProfiles;
               _currentProfileIndex = 0;
             });
           }
@@ -491,7 +554,9 @@ class _ExploreScreenState extends State<ExploreScreen>
       );
 
       if (response.statusCode == 200) {
-        // Success
+        // Success - Remove profile from cache and current list
+        await _removeProfileFromCache(receiverUserId);
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -500,6 +565,7 @@ class _ExploreScreenState extends State<ExploreScreen>
             ),
           ),
         );
+        
         // After sending, move to next profile (do not remove from list)
         setState(() {
           _profileHistory.add(_currentProfileIndex);
@@ -571,6 +637,40 @@ class _ExploreScreenState extends State<ExploreScreen>
       setState(() {
         _sendingInvite = false;
       });
+    }
+  }
+
+  /// Remove profile from cache by userId
+  Future<void> _removeProfileFromCache(String userId) async {
+    try {
+      // Remove from current profiles list
+      setState(() {
+        _profiles.removeWhere((profile) => 
+          profile['userId']?.toString() == userId);
+      });
+
+      // Remove from preloaded profiles
+      _preloadedProfiles.removeWhere((profile) => 
+        profile['userId']?.toString() == userId);
+
+      // Update local storage cache
+      final prefs = await SharedPreferences.getInstance();
+      final profilesJson = prefs.getString(_localProfilesKey);
+      if (profilesJson != null) {
+        final List<dynamic> decoded = json.decode(profilesJson);
+        final List<Map<String, dynamic>> cachedProfiles = decoded
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+        
+        // Remove the profile from cached list
+        cachedProfiles.removeWhere((profile) => 
+          profile['userId']?.toString() == userId);
+        
+        // Save updated cache back to local storage
+        await prefs.setString(_localProfilesKey, json.encode(cachedProfiles));
+      }
+    } catch (e) {
+      debugPrint('Error removing profile from cache: $e');
     }
   }
 
@@ -745,8 +845,8 @@ class _ExploreScreenState extends State<ExploreScreen>
       );
     }
 
-    if ((_noMoreProfiles && _profiles.isEmpty) || _profiles.isEmpty) {
-      // Show the special message if no more profiles and nothing in local
+    // Only show "no more profiles" when we've confirmed no profiles from both local and server
+    if (_noMoreProfiles && _profiles.isEmpty && !_isLoading) {
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: PreferredSize(
@@ -808,11 +908,6 @@ class _ExploreScreenState extends State<ExploreScreen>
                   textAlign: TextAlign.center,
                 ),
               ),
-              if (_preloading)
-                const Padding(
-                  padding: EdgeInsets.only(top: 24.0),
-                  child: CircularProgressIndicator(),
-                ),
             ],
           ),
         ),

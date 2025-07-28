@@ -223,43 +223,91 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     if (_realtimeSub != null) return;
     _realtimeSub = realtime
         .subscribe([
-          'databases.685a90fa0009384c5189.collections.687961d1002e17be4c8a.documents.${widget.connectionId}',
+          // Subscribe to messages collection for this connection
+          'databases.685a90fa0009384c5189.collections.685aae75000e3642cbc0.documents',
         ])
         .stream
         .listen((event) async {
           final payload = event.payload;
-          print(payload);
+          print('Realtime event: $payload');
 
           if (payload == null || payload is! Map) return;
 
           final message = Map<String, dynamic>.from(payload);
-          if (message[r'$updatedAt'] == null) {
-            message[r'$updatedAt'] = DateTime.now().toUtc().toIso8601String();
-          }
-          print('Received message: $message');
-          print('Message ${message[r'$updatedAt']} received');
 
-          setState(() {
-            _messages.add(message);
-            // Sort by $updatedAt
-            _messages.sort((a, b) {
-              final aTime = a[r'$updatedAt'] != null
-                  ? DateTime.tryParse(
-                          a[r'$updatedAt'],
-                        )?.millisecondsSinceEpoch ??
-                        0
-                  : 0;
-              final bTime = b[r'$updatedAt'] != null
-                  ? DateTime.tryParse(
-                          b[r'$updatedAt'],
-                        )?.millisecondsSinceEpoch ??
-                        0
-                  : 0;
-              return aTime.compareTo(bTime);
+          // Only process messages for this connection
+          if (message['connectionId'] != widget.connectionId) return;
+
+          // Only process messages that are not from the current user (to avoid duplicates)
+          String? messageSenderId;
+          if (message['senderId'] is Map) {
+            messageSenderId =
+                message['senderId'][r'$id'] ?? message['senderId']['id'];
+          } else if (message['senderId'] is String) {
+            messageSenderId = message['senderId'];
+          }
+
+          if (messageSenderId == _currentUserId) {
+            // This is a message from the current user, check if we have an optimistic message to replace
+            setState(() {
+              bool replacedOptimistic = false;
+              for (int i = 0; i < _messages.length; i++) {
+                if (_messages[i]['_optimistic'] == true) {
+                  // For date proposals, match by messageType and tempId
+                  if (message['messageType'] == 'date_proposal' && 
+                      _messages[i]['messageType'] == 'date_proposal' &&
+                      _messages[i]['_tempId'] == message['_tempId']) {
+                    _messages[i] = message;
+                    replacedOptimistic = true;
+                    break;
+                  }
+                  // For other messages, match by content
+                  else if (_messages[i]['message'] == message['message']) {
+                    _messages[i] = message;
+                    replacedOptimistic = true;
+                    break;
+                  }
+                }
+              }
+
+              // If not replacing optimistic message, add as new
+              if (!replacedOptimistic) {
+                _messages.add(message);
+              }
+
+              // Sort by $updatedAt
+              _messages.sort((a, b) {
+                final aTime = a[r'$updatedAt'] != null
+                    ? DateTime.tryParse(a[r'$updatedAt'])?.millisecondsSinceEpoch ?? 0
+                    : 0;
+                final bTime = b[r'$updatedAt'] != null
+                    ? DateTime.tryParse(b[r'$updatedAt'])?.millisecondsSinceEpoch ?? 0
+                    : 0;
+                return aTime.compareTo(bTime);
+              });
             });
-            // Locally increment message count on receive
-            _incrementMessageCount();
-          });
+          } else {
+            // This is a message from another user, add it
+            setState(() {
+              _messages.add(message);
+              // Sort by $updatedAt
+              _messages.sort((a, b) {
+                final aTime = a[r'$updatedAt'] != null
+                    ? DateTime.tryParse(
+                            a[r'$updatedAt'],
+                          )?.millisecondsSinceEpoch ??
+                          0
+                    : 0;
+                final bTime = b[r'$updatedAt'] != null
+                    ? DateTime.tryParse(
+                            b[r'$updatedAt'],
+                          )?.millisecondsSinceEpoch ??
+                          0
+                    : 0;
+                return aTime.compareTo(bTime);
+              });
+            });
+          }
 
           // Auto-scroll
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -509,6 +557,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _pickAndSendImage() async {
+    String? imageUrl;
+    String? tempId;
+
     try {
       final XFile? picked = await _picker.pickImage(
         source: ImageSource.gallery,
@@ -527,9 +578,49 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
       setState(() => _sendingImage = true);
       final localPath = picked.path;
-      final imageUrl = await _uploadImageToAppwriteStorage(File(localPath));
+      imageUrl = await _uploadImageToAppwriteStorage(File(localPath));
       if (imageUrl == null)
         throw Exception('Failed to upload image to storage');
+
+      // Create optimistic image message
+      tempId = DateTime.now().millisecondsSinceEpoch.toString();
+      final optimisticMessage = {
+        'message': imageUrl, // Store the image URL in the message field
+        'imageUrl': imageUrl,
+        'senderId': _currentUserId,
+        'is_image': true,
+        'messageType': 'image',
+        '_optimistic': true, // Mark as optimistic
+        '_tempId': tempId, // Temporary ID
+        r'$updatedAt': DateTime.now().toUtc().toIso8601String(),
+      };
+
+      // Add optimistic message to UI immediately
+      setState(() {
+        _messages.add(optimisticMessage);
+        // Sort messages
+        _messages.sort((a, b) {
+          final aTime = a[r'$updatedAt'] != null
+              ? DateTime.tryParse(a[r'$updatedAt'])?.millisecondsSinceEpoch ?? 0
+              : 0;
+          final bTime = b[r'$updatedAt'] != null
+              ? DateTime.tryParse(b[r'$updatedAt'])?.millisecondsSinceEpoch ?? 0
+              : 0;
+          return aTime.compareTo(bTime);
+        });
+      });
+
+      // Auto-scroll to show the new message
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent + 100,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+
       final jwt = await account.createJWT(), token = jwt.jwt;
       final res = await http.post(
         Uri.parse(
@@ -543,9 +634,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       );
       if (res.statusCode != 200)
         throw Exception('Failed to send image message: ${res.body}');
+
       // Locally increment message count on send
       _incrementMessageCount();
-      // Do not update _messages here; rely on real-time or fetch
+
+      // Don't remove optimistic message here - let it stay until we get the real message
+      // The real-time update will handle replacing it when the real message comes back
+
+      // Auto-scroll again after successful send
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
@@ -556,6 +652,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         }
       });
     } catch (e) {
+      // Remove optimistic message on error
+      if (tempId != null) {
+        setState(() {
+          _messages.removeWhere((m) => m['_tempId'] == tempId);
+        });
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error sending image: $e')));
@@ -567,34 +669,101 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   // --- Message Deletion Logic ---
 
   Future<void> _deleteMessage(Map<String, dynamic> message) async {
-    final String? docId = message[r'$id'] ?? message['id'];
-    if (docId == null) return;
-    try {
-      // Update the message document in Appwrite to set is_deleted: true
-      await databases.updateDocument(
-        databaseId: '685a90fa0009384c5189',
-        collectionId: '685aae75000e3642cbc0',
-        documentId: docId,
-        data: {'is_deleted': true},
-      );
-      // Mark as deleted locally for immediate UI feedback
+    print(message);
+
+    // Try multiple ways to get the document ID
+    String? docId = message[r'$id'] ?? message['id'];
+    final String? tempId = message['_tempId'];
+    final bool isOptimistic = message['_optimistic'] == true;
+
+    // Remove optimistic message from local state first
+    if (isOptimistic || tempId != null) {
       setState(() {
-        _locallyDeletedMessageIds.add(docId);
-        // Also update the message in _messages to reflect is_deleted
-        for (var m in _messages) {
-          if ((m[r'$id'] ?? m['id']) == docId) {
-            m['is_deleted'] = true;
-          }
+        if (tempId != null) {
+          _messages.removeWhere((m) => m['_tempId'] == tempId);
+        } else {
+          // Remove by content and senderId for optimistic messages without tempId
+          _messages.removeWhere(
+            (m) =>
+                m['_optimistic'] == true &&
+                m['message'] == message['message'] &&
+                m['senderId'] == message['senderId'],
+          );
         }
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Message deleted.')));
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to delete message: $e')));
     }
+
+    // If we still don't have a document ID, we need to find the message in the database
+    if (docId == null) {
+      try {
+        // Query the database to find the message by its content and senderId
+        final result = await databases.listDocuments(
+          databaseId: '685a90fa0009384c5189',
+          collectionId: '685aae75000e3642cbc0',
+          queries: [
+            Query.equal('connectionId', widget.connectionId),
+            // Handle both text and image messages
+            message['is_image'] == true
+                ? Query.equal(
+                    'imageUrl',
+                    message['imageUrl'] ?? message['message'],
+                  )
+                : Query.equal('message', message['message']),
+            Query.equal('senderId', message['senderId']),
+            Query.orderDesc(r'$createdAt'),
+            Query.limit(1),
+          ],
+        );
+
+        if (result.documents.isNotEmpty) {
+          docId = result.documents.first.$id;
+        }
+      } catch (e) {
+        debugPrint('Failed to find message in database: $e');
+      }
+    }
+
+    // For real messages (including optimistic ones that might have been saved), try to delete from database
+    if (docId != null) {
+      try {
+        // Update the message document in Appwrite to set is_deleted: true
+        await databases.updateDocument(
+          databaseId: '685a90fa0009384c5189',
+          collectionId: '685aae75000e3642cbc0',
+          documentId: docId,
+          data: {'is_deleted': true},
+        );
+        // Mark as deleted locally for immediate UI feedback
+        setState(() {
+          _locallyDeletedMessageIds.add(docId!);
+          // Also update the message in _messages to reflect is_deleted
+          for (var m in _messages) {
+            if ((m[r'$id'] ?? m['id']) == docId) {
+              m['is_deleted'] = true;
+            }
+          }
+        });
+      } catch (e) {
+        // If database deletion fails, still show success since we removed from local state
+        debugPrint('Failed to delete message from database: $e');
+      }
+    } else {
+      // If we couldn't find the document ID, just remove from local state
+      setState(() {
+        _messages.removeWhere(
+          (m) =>
+              (message['is_image'] == true
+                  ? (m['imageUrl'] == message['imageUrl'] ||
+                        m['message'] == message['message'])
+                  : m['message'] == message['message']) &&
+              m['senderId'] == message['senderId'],
+        );
+      });
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Message deleted.')));
   }
 
   _showDeleteMessageDialog(Map<String, dynamic> message) {
@@ -647,14 +816,55 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         errorMessage = null;
         successMessage = null;
       });
+      
+      // Create optimistic proposal message
+      final DateTime combinedDateTime = DateTime(
+        selectedDate!.year,
+        selectedDate!.month,
+        selectedDate!.day,
+        selectedTime!.hour,
+        selectedTime!.minute,
+      );
+      
+      final proposalText = "Date: ${DateFormat('MMM d, yyyy').format(combinedDateTime)} at ${selectedTime!.format(context)}\nPlace: ${placeController.text.trim()}";
+      
+      final optimisticMessage = {
+        'message': proposalText,
+        'senderId': _currentUserId,
+        'is_image': false,
+        'messageType': 'date_proposal',
+        '_optimistic': true,
+        '_tempId': DateTime.now().millisecondsSinceEpoch.toString(),
+        r'$updatedAt': DateTime.now().toUtc().toIso8601String(),
+      };
+
+      // Add optimistic message to UI immediately
+      setState(() {
+        _messages.add(optimisticMessage);
+        // Sort messages
+        _messages.sort((a, b) {
+          final aTime = a[r'$updatedAt'] != null
+              ? DateTime.tryParse(a[r'$updatedAt'])?.millisecondsSinceEpoch ?? 0
+              : 0;
+          final bTime = b[r'$updatedAt'] != null
+              ? DateTime.tryParse(b[r'$updatedAt'])?.millisecondsSinceEpoch ?? 0
+              : 0;
+          return aTime.compareTo(bTime);
+        });
+      });
+
+      // Auto-scroll to show the new message
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent + 100,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+
       try {
-        final DateTime combinedDateTime = DateTime(
-          selectedDate!.year,
-          selectedDate!.month,
-          selectedDate!.day,
-          selectedTime!.hour,
-          selectedTime!.minute,
-        );
         final jwt = await account.createJWT();
         final token = jwt.jwt;
         final res = await http.post(
@@ -680,6 +890,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           // After sending proposal, refresh proposal status
           await _fetchDateProposalStatus();
         } else {
+          // Remove optimistic message on error
+          setState(() {
+            _messages.removeWhere(
+              (m) => m['_tempId'] == optimisticMessage['_tempId'],
+            );
+          });
           setState(() {
             isLoading = false;
             errorMessage =
@@ -687,6 +903,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           });
         }
       } catch (e) {
+        // Remove optimistic message on error
+        setState(() {
+          _messages.removeWhere(
+            (m) => m['_tempId'] == optimisticMessage['_tempId'],
+          );
+        });
         setState(() {
           isLoading = false;
           errorMessage = e.toString();
@@ -814,9 +1036,33 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Future<void> _sendTextMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _sendingText) return;
+
+    // Create optimistic message
+    final optimisticMessage = {
+      'message': text,
+      'senderId': _currentUserId,
+      'is_image': false,
+      'messageType': 'text',
+      '_optimistic': true, // Mark as optimistic
+      '_tempId': DateTime.now().millisecondsSinceEpoch
+          .toString(), // Temporary ID
+      r'$updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
     setState(() {
       _hasText = false;
       _controller.clear();
+      _messages.add(optimisticMessage);
+      // Sort messages
+      _messages.sort((a, b) {
+        final aTime = a[r'$updatedAt'] != null
+            ? DateTime.tryParse(a[r'$updatedAt'])?.millisecondsSinceEpoch ?? 0
+            : 0;
+        final bTime = b[r'$updatedAt'] != null
+            ? DateTime.tryParse(b[r'$updatedAt'])?.millisecondsSinceEpoch ?? 0
+            : 0;
+        return aTime.compareTo(bTime);
+      });
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -827,6 +1073,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           curve: Curves.easeOut,
         );
     });
+
     try {
       final jwt = await account.createJWT(), token = jwt.jwt;
       final res = await http.post(
@@ -841,9 +1088,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       );
       if (res.statusCode != 200)
         throw Exception('Failed to send message: ${res.body}');
+
       // Locally increment message count on send
       _incrementMessageCount();
-      // Do not update _messages here; rely on real-time or fetch
+
+      // Don't remove optimistic message here - let it stay until we get the real message
+      // The real-time update will handle replacing it when the real message comes back
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients)
           _scrollController.animateTo(
@@ -853,6 +1104,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           );
       });
     } catch (e) {
+      // Remove optimistic message on error
+      setState(() {
+        _messages.removeWhere(
+          (m) => m['_tempId'] == optimisticMessage['_tempId'],
+        );
+      });
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error sending message: $e')));
@@ -1303,19 +1560,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 child: const Center(child: Icon(Icons.broken_image)),
               ),
             );
-      return Row(
-        mainAxisAlignment: isSender
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        children: [
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 290, maxHeight: 290),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: img,
-            ),
-          ),
-        ],
+      contentWidget = ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 290, maxHeight: 290),
+        child: ClipRRect(borderRadius: BorderRadius.circular(8), child: img),
       );
     } else if (text != null && text.isNotEmpty) {
       if (isOptimistic) {

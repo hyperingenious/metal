@@ -71,7 +71,7 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor, // Use theme background
+      backgroundColor: Colors.white, // Changed to white background
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -167,7 +167,7 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                         letterSpacing: 2,
                         color: colorScheme.onSurface,
                       ),
-                      validator: (v) => v == null || v.length != 10
+                      validator: (v) => (v == null || v.length != 10)
                           ? 'Enter a valid 10-digit phone'
                           : null,
                     ),

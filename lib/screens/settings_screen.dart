@@ -199,6 +199,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final accentColor = const Color(0xFF6D4B86);
 
     return Scaffold(
+      backgroundColor: Colors.white, // Set background color to white
       appBar: AppBar(
         elevation: 0,
         leading: IconButton(
