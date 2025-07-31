@@ -2,11 +2,17 @@
 import 'package:appwrite/appwrite.dart';
 
 import 'package:flutter/material.dart';
-import 'package:metal/appwrite/appwrite.dart';
+import 'package:lushh/appwrite/appwrite.dart';
 import 'home_screen.dart';
 import 'phone_input_screen.dart';
 import 'profile_completion/profile_completion_router.dart';
 import 'settings_screen.dart';
+
+// Import IDs from .env using String.fromEnvironment
+const String databaseId = String.fromEnvironment('DATABASE_ID');
+const String completionStatusCollectionId = String.fromEnvironment(
+  'COMPLETION_STATUS_COLLECTIONID',
+);
 
 class AuthGate extends StatefulWidget {
   final String? requestedRoute;
@@ -20,8 +26,6 @@ class _AuthGateState extends State<AuthGate> {
   bool isChecking = true;
   bool isLoggedIn = false;
   bool isAllCompleted = false;
-  String databaseId = '685a90fa0009384c5189';
-  String completionStatusCollectionId = '686777d300169b27b237';
 
   @override
   void initState() {
@@ -84,7 +88,7 @@ class _AuthGateState extends State<AuthGate> {
 /*
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
-import 'package:metal/screens/otp_screen.dart';
+import 'package:lushh/screens/otp_screen.dart';
 import '../appwrite/appwrite.dart';
 
 class AuthGate extends StatefulWidget {

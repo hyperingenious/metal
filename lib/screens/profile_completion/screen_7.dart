@@ -2,9 +2,18 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:metal/appwrite/appwrite.dart';
+import 'package:lushh/appwrite/appwrite.dart';
 import 'package:appwrite/appwrite.dart';
-import 'package:metal/screens/profile_completion/screen_8.dart';
+import 'package:lushh/screens/profile_completion/screen_8.dart';
+
+// Import all IDs from .env using String.fromEnvironment
+const String databaseId = String.fromEnvironment('DATABASE_ID');
+const String completionStatusCollectionId = String.fromEnvironment(
+  'COMPLETION_STATUS_COLLECTIONID',
+);
+const String imagesCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
+const String storageBucketId = String.fromEnvironment('STORAGE_BUCKETID');
+const String appwriteProjectId = String.fromEnvironment('PROJECT_ID');
 
 class AddImagesScreen extends StatefulWidget {
   const AddImagesScreen({super.key});
@@ -19,11 +28,6 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
   late List<XFile?> _selectedImages;
   bool _loading = false;
 
-  String databaseId = '685a90fa0009384c5189';
-  String completionStatusCollectionId = '686777d300169b27b237';
-  String imagesCollectionId = '685aa0ef00090023c8a3';
-  String storageBucketId = '686c230b002fb6f5149e';
-
   final ImagePicker _picker = ImagePicker();
 
   // Theme colors (align with other screens)
@@ -37,7 +41,8 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
   }
 
   int get _imageCount => _selectedImages.where((img) => img != null).length;
-  List<XFile> get _imagesForUpload => _selectedImages.whereType<XFile>().toList();
+  List<XFile> get _imagesForUpload =>
+      _selectedImages.whereType<XFile>().toList();
 
   Future<void> _pickImages() async {
     final List<XFile>? picked = await _picker.pickMultiImage(imageQuality: 85);
@@ -91,7 +96,7 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
         );
 
         String url =
-            'https://fra.cloud.appwrite.io/v1/storage/buckets/$storageBucketId/files/${storageFile.$id}/view?project=685a8d7a001b583de71d&mode=admin';
+            'https://fra.cloud.appwrite.io/v1/storage/buckets/$storageBucketId/files/${storageFile.$id}/view?project=$appwriteProjectId&mode=admin';
         imageUrls.add(url);
       }
 
@@ -122,7 +127,10 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
           documentId: ID.unique(),
           data: {
             'user': userId,
-            ...{for (int i = 0; i < imageUrls.length; i++) 'image_${i + 1}': imageUrls[i]},
+            ...{
+              for (int i = 0; i < imageUrls.length; i++)
+                'image_${i + 1}': imageUrls[i],
+            },
           },
         );
       }
@@ -142,7 +150,7 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
           databaseId: databaseId,
           collectionId: completionStatusCollectionId,
           documentId: documentId,
-          data: {'isAllImagesAdded': true,},
+          data: {'isAllImagesAdded': true},
         );
       }
 
@@ -229,14 +237,13 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
               decoration: BoxDecoration(
                 color: Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: accentColor.withOpacity(0.18), width: 1.2),
+                border: Border.all(
+                  color: accentColor.withOpacity(0.18),
+                  width: 1.2,
+                ),
               ),
               child: Center(
-                child: Icon(
-                  Icons.add_a_photo,
-                  color: accentColor,
-                  size: 32,
-                ),
+                child: Icon(Icons.add_a_photo, color: accentColor, size: 32),
               ),
             ),
           );

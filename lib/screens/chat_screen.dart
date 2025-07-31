@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:appwrite/appwrite.dart';
-import 'package:metal/appwrite/appwrite.dart';
+import 'package:lushh/appwrite/appwrite.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:intl/intl.dart';
@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'dart:async';
+import 'profile_check.dart' as profile_check;
 
 class ChatScreen extends StatefulWidget {
   final String userId, connectionId;
@@ -141,8 +142,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     try {
       // Fetch the connection document to get messageCount
       final doc = await databases.getDocument(
-        databaseId: '685a90fa0009384c5189',
-        collectionId: '685a95f5001cadd0cfc3',
+        databaseId: databaseId,
+        collectionId: connectionsCollectionId,
         documentId: widget.connectionId,
       );
       int count = 0;
@@ -174,11 +175,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Future<void> _markMessagesAsRead() async {
     try {
-      const String dbId = '685a90fa0009384c5189';
-      const String messagesCollectionId = '685aae75000e3642cbc0';
-
       final result = await databases.listDocuments(
-        databaseId: dbId,
+        databaseId: databaseId,
         collectionId: messagesCollectionId,
         queries: [
           Query.equal('connectionId', widget.connectionId),
@@ -193,7 +191,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         if (doc.data['is_read'] == false) {
           try {
             await databases.updateDocument(
-              databaseId: dbId,
+              databaseId: databaseId,
               collectionId: messagesCollectionId,
               documentId: doc.$id,
               data: {'is_read': true},
@@ -224,7 +222,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _realtimeSub = realtime
         .subscribe([
           // Subscribe to messages collection for this connection
-          'databases.685a90fa0009384c5189.collections.685aae75000e3642cbc0.documents',
+          'databases.$databaseId.collections.$messagesCollectionId.documents',
         ])
         .stream
         .listen((event) async {
@@ -254,7 +252,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               for (int i = 0; i < _messages.length; i++) {
                 if (_messages[i]['_optimistic'] == true) {
                   // For date proposals, match by messageType and tempId
-                  if (message['messageType'] == 'date_proposal' && 
+                  if (message['messageType'] == 'date_proposal' &&
                       _messages[i]['messageType'] == 'date_proposal' &&
                       _messages[i]['_tempId'] == message['_tempId']) {
                     _messages[i] = message;
@@ -278,10 +276,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               // Sort by $updatedAt
               _messages.sort((a, b) {
                 final aTime = a[r'$updatedAt'] != null
-                    ? DateTime.tryParse(a[r'$updatedAt'])?.millisecondsSinceEpoch ?? 0
+                    ? DateTime.tryParse(
+                            a[r'$updatedAt'],
+                          )?.millisecondsSinceEpoch ??
+                          0
                     : 0;
                 final bTime = b[r'$updatedAt'] != null
-                    ? DateTime.tryParse(b[r'$updatedAt'])?.millisecondsSinceEpoch ?? 0
+                    ? DateTime.tryParse(
+                            b[r'$updatedAt'],
+                          )?.millisecondsSinceEpoch ??
+                          0
                     : 0;
                 return aTime.compareTo(bTime);
               });
@@ -362,15 +366,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Future<void> _createChatInboxOnLoad() async {
     try {
       final inboxDoc = await databases.listDocuments(
-        databaseId: '685a90fa0009384c5189',
-        collectionId: '687961d1002e17be4c8a',
+        databaseId: databaseId,
+        collectionId: messageInboxCollectionId,
         queries: [Query.equal(r'$id', widget.connectionId)],
       );
       if (inboxDoc.documents.isEmpty) {
         try {
           await databases.createDocument(
-            databaseId: '685a90fa0009384c5189',
-            collectionId: "687961d1002e17be4c8a",
+            databaseId: databaseId,
+            collectionId: messageInboxCollectionId,
             documentId: widget.connectionId,
             data: {'is_image': null},
           );
@@ -396,12 +400,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       _userErrorMessage = null;
     });
     try {
-      const db = '685a90fa0009384c5189',
-          uc = '68616ecc00163ed41e57',
-          ic = '685aa0ef00090023c8a3';
       final userDocs = await databases.listDocuments(
-        databaseId: db,
-        collectionId: uc,
+        databaseId: databaseId,
+        collectionId: usersCollectionId,
         queries: [Query.equal(r'$id', widget.userId)],
       );
       final name = userDocs.documents.isNotEmpty
@@ -409,8 +410,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           : null;
       if (name == null) throw Exception('User not found in database');
       final imageDocs = await databases.listDocuments(
-        databaseId: db,
-        collectionId: ic,
+        databaseId: databaseId,
+        collectionId: imageCollectionId,
         queries: [Query.equal('user', widget.userId)],
       );
       final img = imageDocs.documents.isNotEmpty
@@ -446,8 +447,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     });
     try {
       final doc = await databases.getDocument(
-        databaseId: '685a90fa0009384c5189',
-        collectionId: '685a95f5001cadd0cfc3',
+        databaseId: databaseId,
+        collectionId: connectionsCollectionId,
         documentId: widget.connectionId,
       );
       String? status;
@@ -538,13 +539,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Future<String?> _uploadImageToAppwriteStorage(File file) async {
     try {
-      const bucketId = '686c230b002fb6f5149e';
       final uploaded = await storage.createFile(
-        bucketId: bucketId,
+        bucketId: storageBucketId,
         fileId: ID.unique(),
         file: InputFile.fromPath(path: file.path),
       );
-      return 'https://fra.cloud.appwrite.io/v1/storage/buckets/$bucketId/files/${uploaded.$id}/view?project=685a8d7a001b583de71d&mode=admin';
+      return 'https://fra.cloud.appwrite.io/v1/storage/buckets/$storageBucketId/files/${uploaded.$id}/view?project=$projectId&mode=admin';
     } catch (e) {
       debugPrint('Error uploading image to Appwrite: $e');
       return null;
@@ -698,8 +698,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       try {
         // Query the database to find the message by its content and senderId
         final result = await databases.listDocuments(
-          databaseId: '685a90fa0009384c5189',
-          collectionId: '685aae75000e3642cbc0',
+          databaseId: databaseId,
+          collectionId: messagesCollectionId,
           queries: [
             Query.equal('connectionId', widget.connectionId),
             // Handle both text and image messages
@@ -728,8 +728,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       try {
         // Update the message document in Appwrite to set is_deleted: true
         await databases.updateDocument(
-          databaseId: '685a90fa0009384c5189',
-          collectionId: '685aae75000e3642cbc0',
+          databaseId: databaseId,
+          collectionId: messagesCollectionId,
           documentId: docId,
           data: {'is_deleted': true},
         );
@@ -816,7 +816,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         errorMessage = null;
         successMessage = null;
       });
-      
+
       // Create optimistic proposal message
       final DateTime combinedDateTime = DateTime(
         selectedDate!.year,
@@ -825,9 +825,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         selectedTime!.hour,
         selectedTime!.minute,
       );
-      
-      final proposalText = "Date: ${DateFormat('MMM d, yyyy').format(combinedDateTime)} at ${selectedTime!.format(context)}\nPlace: ${placeController.text.trim()}";
-      
+
+      final proposalText =
+          "Date: ${DateFormat('MMM d, yyyy').format(combinedDateTime)} at ${selectedTime!.format(context)}\nPlace: ${placeController.text.trim()}";
+
       final optimisticMessage = {
         'message': proposalText,
         'senderId': _currentUserId,
@@ -1980,15 +1981,27 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
     return Row(
       children: [
-        CircleAvatar(
-          radius: 20, // increased avatar size
-          backgroundImage: (_userImageUrl != null && _userImageUrl!.isNotEmpty)
-              ? NetworkImage(_userImageUrl!)
-              : null,
-          backgroundColor: const Color(0xFFEEE0F7),
-          child: (_userImageUrl == null || _userImageUrl!.isEmpty)
-              ? const Icon(Icons.person, color: Color(0xFF9F6BC1), size: 22)
-              : null,
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    profile_check.ProfileCheck(userId: widget.userId),
+              ),
+            );
+          },
+          child: CircleAvatar(
+            radius: 20, // increased avatar size
+            backgroundImage:
+                (_userImageUrl != null && _userImageUrl!.isNotEmpty)
+                ? NetworkImage(_userImageUrl!)
+                : null,
+            backgroundColor: const Color(0xFFEEE0F7),
+            child: (_userImageUrl == null || _userImageUrl!.isEmpty)
+                ? const Icon(Icons.person, color: Color(0xFF9F6BC1), size: 22)
+                : null,
+          ),
         ),
         const SizedBox(width: 10), // smaller gap
         Text(

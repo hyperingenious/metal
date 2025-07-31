@@ -7,7 +7,16 @@ import 'package:appwrite/appwrite.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
-import 'package:metal/appwrite/appwrite.dart';
+import 'package:lushh/appwrite/appwrite.dart';
+
+// Import all ids from .env using String.fromEnvironment
+const String databaseId = String.fromEnvironment('DATABASE_ID');
+const String completionStatusCollectionId = String.fromEnvironment(
+  'COMPLETION_STATUS_COLLECTIONID',
+);
+const String locationCollectionId = String.fromEnvironment(
+  'LOCATION_COLLECTIONID',
+);
 
 class AddLocationScreen extends StatefulWidget {
   const AddLocationScreen({Key? key}) : super(key: key);
@@ -15,10 +24,6 @@ class AddLocationScreen extends StatefulWidget {
   @override
   State<AddLocationScreen> createState() => _AddLocationScreenState();
 }
-
-String databaseId = '685a90fa0009384c5189';
-String completionStatusCollectionId = '686777d300169b27b237';
-String locationCollectionId = '685fe47700022b8331dc';
 
 class _AddLocationScreenState extends State<AddLocationScreen> {
   final String country = "India";
@@ -44,7 +49,8 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
         jsonString = await rootBundle.loadString('assets/cities_states.json');
       } on FlutterError catch (e) {
         setState(() {
-          loadError = "Resource not found: assets/cities_states.json\n${e.message}";
+          loadError =
+              "Resource not found: assets/cities_states.json\n${e.message}";
           isLoadingStates = false;
         });
         return;
@@ -141,7 +147,9 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
           } catch (e) {
             setState(() => isGettingLocation = false);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Error requesting location permission: $e")),
+              SnackBar(
+                content: Text("Error requesting location permission: $e"),
+              ),
             );
             return;
           }
@@ -168,18 +176,21 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
 
         Position pos;
         try {
-          pos = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high,
-          ).timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              throw Exception('Location request timed out. Try again.');
-            },
-          );
+          pos =
+              await Geolocator.getCurrentPosition(
+                desiredAccuracy: LocationAccuracy.high,
+              ).timeout(
+                const Duration(seconds: 10),
+                onTimeout: () {
+                  throw Exception('Location request timed out. Try again.');
+                },
+              );
         } on TimeoutException catch (_) {
           setState(() => isGettingLocation = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location request timed out. Try again.')),
+            const SnackBar(
+              content: Text('Location request timed out. Try again.'),
+            ),
           );
           return;
         } on PermissionDeniedException catch (e) {
@@ -190,9 +201,9 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
           return;
         } catch (e) {
           setState(() => isGettingLocation = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to get location: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to get location: $e')));
           return;
         }
 
@@ -204,7 +215,9 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
         // Linux: Use IP-based geolocation as fallback
         http.Response response;
         try {
-          response = await http.get(Uri.parse('https://ipapi.co/json/')).timeout(const Duration(seconds: 10));
+          response = await http
+              .get(Uri.parse('https://ipapi.co/json/'))
+              .timeout(const Duration(seconds: 10));
         } on TimeoutException catch (_) {
           setState(() => isGettingLocation = false);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -225,7 +238,9 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
           } catch (e) {
             setState(() => isGettingLocation = false);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Invalid response from IP location service: $e')),
+              SnackBar(
+                content: Text('Invalid response from IP location service: $e'),
+              ),
             );
             return;
           }
@@ -251,14 +266,20 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
           } else {
             setState(() => isGettingLocation = false);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Unable to parse coordinates from IP location.")),
+              const SnackBar(
+                content: Text("Unable to parse coordinates from IP location."),
+              ),
             );
             return;
           }
         } else {
           setState(() => isGettingLocation = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Failed to fetch IP location. Status: ${response.statusCode}")),
+            SnackBar(
+              content: Text(
+                "Failed to fetch IP location. Status: ${response.statusCode}",
+              ),
+            ),
           );
           return;
         }
@@ -266,7 +287,9 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
         // Fallback for other platforms (web, macOS, windows, etc.)
         http.Response response;
         try {
-          response = await http.get(Uri.parse('https://ipapi.co/json/')).timeout(const Duration(seconds: 10));
+          response = await http
+              .get(Uri.parse('https://ipapi.co/json/'))
+              .timeout(const Duration(seconds: 10));
         } on TimeoutException catch (_) {
           setState(() => isGettingLocation = false);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -287,7 +310,9 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
           } catch (e) {
             setState(() => isGettingLocation = false);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Invalid response from IP location service: $e')),
+              SnackBar(
+                content: Text('Invalid response from IP location service: $e'),
+              ),
             );
             return;
           }
@@ -313,23 +338,29 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
           } else {
             setState(() => isGettingLocation = false);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Unable to parse coordinates from IP location.")),
+              const SnackBar(
+                content: Text("Unable to parse coordinates from IP location."),
+              ),
             );
             return;
           }
         } else {
           setState(() => isGettingLocation = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Failed to fetch IP location. Status: ${response.statusCode}")),
+            SnackBar(
+              content: Text(
+                "Failed to fetch IP location. Status: ${response.statusCode}",
+              ),
+            ),
           );
           return;
         }
       }
     } catch (e, stack) {
       setState(() => isGettingLocation = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to get location: $e\n$stack')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to get location: $e\n$stack')),
+      );
     }
   }
 
@@ -395,35 +426,38 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
               'city': selectedCity,
               'latitude': currentPosition!.latitude,
               'longitude': currentPosition!.longitude,
-              'user': userId
+              'user': userId,
             },
           );
         }
-      // Update completion status
-      final userCompletionStatusDocument = await databases.listDocuments(
-        databaseId: databaseId,
-        collectionId: completionStatusCollectionId,
-        queries: [
-          Query.equal('user', userId),
-          Query.select(['\$id']),
-        ],
-      );
-
-      if (userCompletionStatusDocument.documents.isNotEmpty) {
-        final documentId = userCompletionStatusDocument.documents[0].$id;
-        await databases.updateDocument(
+        // Update completion status
+        final userCompletionStatusDocument = await databases.listDocuments(
           databaseId: databaseId,
           collectionId: completionStatusCollectionId,
-          documentId: documentId,
-          data: {'isLocationAdded': true, 'isAllCompleted': true},
+          queries: [
+            Query.equal('user', userId),
+            Query.select(['\$id']),
+          ],
         );
-      }
 
-      Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
- 
+        if (userCompletionStatusDocument.documents.isNotEmpty) {
+          final documentId = userCompletionStatusDocument.documents[0].$id;
+          await databases.updateDocument(
+            databaseId: databaseId,
+            collectionId: completionStatusCollectionId,
+            documentId: documentId,
+            data: {'isLocationAdded': true, 'isAllCompleted': true},
+          );
+        }
+
+        Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
       } on AppwriteException catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save location: ${e.message ?? e.toString()}')),
+          SnackBar(
+            content: Text(
+              'Failed to save location: ${e.message ?? e.toString()}',
+            ),
+          ),
         );
         return;
       } catch (e) {
@@ -445,12 +479,18 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
         );
       } on AppwriteException catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to fetch completion status: ${e.message ?? e.toString()}')),
+          SnackBar(
+            content: Text(
+              'Failed to fetch completion status: ${e.message ?? e.toString()}',
+            ),
+          ),
         );
         return;
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unexpected error fetching completion status: $e')),
+          SnackBar(
+            content: Text('Unexpected error fetching completion status: $e'),
+          ),
         );
         return;
       }
@@ -466,20 +506,26 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
           );
         } on AppwriteException catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update completion status: ${e.message ?? e.toString()}')),
+            SnackBar(
+              content: Text(
+                'Failed to update completion status: ${e.message ?? e.toString()}',
+              ),
+            ),
           );
           return;
         } catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Unexpected error updating completion status: $e')),
+            SnackBar(
+              content: Text('Unexpected error updating completion status: $e'),
+            ),
           );
           return;
         }
       }
     } catch (e, stack) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unexpected error: $e\n$stack')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unexpected error: $e\n$stack')));
     }
   }
 
@@ -662,13 +708,13 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
                                 items: selectedState == null
                                     ? []
                                     : (stateCityMap![selectedState] ?? [])
-                                        .map(
-                                          (city) => DropdownMenuItem(
-                                            value: city,
-                                            child: Text(city),
-                                          ),
-                                        )
-                                        .toList(),
+                                          .map(
+                                            (city) => DropdownMenuItem(
+                                              value: city,
+                                              child: Text(city),
+                                            ),
+                                          )
+                                          .toList(),
                                 onChanged: selectedState == null
                                     ? null
                                     : _onCityChanged,
@@ -694,8 +740,8 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
                                     isGettingLocation
                                         ? "Getting Location..."
                                         : currentPosition != null
-                                            ? "Location Set"
-                                            : "Get Current Location",
+                                        ? "Location Set"
+                                        : "Get Current Location",
                                   ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: accentColor,

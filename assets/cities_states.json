@@ -253,9 +253,6 @@
     "Zahirabad",
     "Rajampet"
   ],
-  "Andhra pradesh": [
-    "Pondur"
-  ],
   "Arunachal Pradesh": [
     "Along",
     "Bomdila",
@@ -552,9 +549,6 @@
     "Wadhwan",
     "Wankaner"
   ],
-  " India": [
-    "Dharampur"
-  ],
   "Gujrat": [
     "Adalaj",
     "Adityana",
@@ -567,9 +561,6 @@
     "Antaliya",
     "Arambhada",
     "Atul"
-  ],
-  "Hariyana": [
-    "Ballabhgarh"
   ],
   "Haryana": [
     "Ambala",
@@ -944,18 +935,6 @@
     "Umaria",
     "Vidisha",
     "Wara Seoni"
-  ],
-  "Maharastra": [
-    "Umarga",
-    "Umarkhed",
-    "Umred",
-    "Vadgaon Kasba",
-    "Vaijapur",
-    "Vasai",
-    "Virar",
-    "Vita",
-    "Yavatmal",
-    "Yawal"
   ],
   "Manipur": [
     "Imphal",
@@ -1389,9 +1368,7 @@
     "Chennai",
     "Coimbatore"
   ],
-  "Tamil nadu": [
-    "Chinna salem"
-  ],
+
   "Tripura": [
     "Agartala",
     "Badharghat",
@@ -1528,24 +1505,6 @@
     "Zamania",
     "Muzaffarnagar"
   ],
-  " Ghazipur": [
-    "Saidpur"
-  ],
-  " Hardoi": [
-    "Shahabad"
-  ],
-  " Rampur": [
-    "Shahabad"
-  ],
-  " Agra": [
-    "Shamsabad"
-  ],
-  " Farrukhabad": [
-    "Shamsabad"
-  ],
-  " Bulandshahr": [
-    "Shikarpur"
-  ],
   "Uttarakhand": [
     "Almora",
     "Bazpur",
@@ -1569,8 +1528,5 @@
     "Rudrapur",
     "Sitarganj",
     "Tehri"
-  ],
-  " Purulia": [
-    "Adra"
   ]
 }

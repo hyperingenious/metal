@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:metal/appwrite/appwrite.dart'; // Import your Appwrite client
+import 'package:lushh/appwrite/appwrite.dart'; // Import your Appwrite client
 import 'package:appwrite/appwrite.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+
+// Import all ids from .env using String.fromEnvironment
+const String bioDataCollectionId = String.fromEnvironment(
+  'BIODATA_COLLECTIONID',
+);
+const String _databaseId = String.fromEnvironment('DATABASE_ID');
+const String _userCollectionId = String.fromEnvironment('USERS_COLLECTIONID');
+const String _imagesCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
+const String _storageBucketId = String.fromEnvironment('STORAGE_BUCKETID');
+const String _projectId = String.fromEnvironment('PROJECT_ID');
 
 class ProfileEditScreen extends StatefulWidget {
   final String? initialName;
@@ -26,12 +36,7 @@ class ProfileEditScreen extends StatefulWidget {
 }
 
 class _ProfileEditScreenState extends State<ProfileEditScreen> {
-  String bioDataCollectionId = '685aac1d0013a8a6752f';
-  final String _databaseId = '685a90fa0009384c5189';
-  final String _userCollectionId = '68616ecc00163ed41e57';
-  final String _imagesCollectionId = '685aa0ef00090023c8a3';
-  final String _storageBucketId =
-      '686c230b002fb6f5149e'; // Use your storage bucket id
+  // Remove the hardcoded ids, use the consts above
 
   late TextEditingController _nameController;
   late List<String> _images;
@@ -75,9 +80,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     _professionNameController = TextEditingController(
       text: widget.initialProfessionName ?? '',
     );
-    _bioController = TextEditingController(
-      text: widget.initialBio ?? '',
-    );
+    _bioController = TextEditingController(text: widget.initialBio ?? '');
     _originalName = widget.initialName ?? '';
     _originalProfession = widget.initialProfession ?? _professions.first;
     _originalBio = widget.initialBio ?? '';
@@ -161,10 +164,13 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         _images = fetchedImages;
         _isLoading = false;
         _originalName = fetchedName ?? widget.initialName ?? '';
-        _selectedProfession = fetchedProfession ?? widget.initialProfession ?? _professions.first;
-        _professionNameController.text = fetchedProfessionName ?? widget.initialProfessionName ?? '';
+        _selectedProfession =
+            fetchedProfession ?? widget.initialProfession ?? _professions.first;
+        _professionNameController.text =
+            fetchedProfessionName ?? widget.initialProfessionName ?? '';
         _bioController.text = fetchedBio ?? widget.initialBio ?? '';
-        _originalProfession = fetchedProfession ?? widget.initialProfession ?? _professions.first;
+        _originalProfession =
+            fetchedProfession ?? widget.initialProfession ?? _professions.first;
         _originalBio = fetchedBio ?? widget.initialBio ?? '';
       });
     } on AppwriteException catch (e) {
@@ -196,7 +202,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     if (index < 0 ||
         index >= _images.length ||
         index == 0 ||
-        _images[index].isEmpty) return;
+        _images[index].isEmpty)
+      return;
 
     setState(() {
       _isLoading = true;
@@ -303,7 +310,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
       // Get the file URL
       String fileUrl =
-          'https://fra.cloud.appwrite.io/v1/storage/buckets/$_storageBucketId/files/${storageFile.$id}/view?project=685a8d7a001b583de71d&mode=admin';
+          'https://fra.cloud.appwrite.io/v1/storage/buckets/$_storageBucketId/files/${storageFile.$id}/view?project=$_projectId&mode=admin';
 
       // Find the user's image document in the images collection
       final imageDocs = await databases.listDocuments(
@@ -462,7 +469,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   }
 
   // The function to be called on save (to be implemented by you)
-  Future<void> _saveProfileChanges() async {
+  Future<bool> _saveProfileChanges() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -472,7 +479,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       final user = await account.get();
       final userId = user.$id;
 
-      final nameChanged = (_nameController.text.trim() != (_originalName ?? ''));
+      final nameChanged =
+          (_nameController.text.trim() != (_originalName ?? ''));
       final professionChanged =
           (_selectedProfession != (_originalProfession ?? _professions.first));
       final bioChanged = (_bioController.text.trim() != (_originalBio ?? ''));
@@ -485,9 +493,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           databaseId: _databaseId,
           collectionId: _userCollectionId,
           documentId: userId,
-          data: {
-            'name': _nameController.text.trim(),
-          },
+          data: {'name': _nameController.text.trim()},
         );
         setState(() {
           _originalName = _nameController.text.trim();
@@ -506,7 +512,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           final updateData = <String, dynamic>{};
           if (professionChanged) {
             updateData['profession_type'] = _selectedProfession;
-            updateData['profession_name'] = _professionNameController.text.trim();
+            updateData['profession_name'] = _professionNameController.text
+                .trim();
           }
           if (bioChanged) {
             updateData['bio'] = _bioController.text.trim();
@@ -526,6 +533,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           setState(() {
             _errorMessage = "Profile data not found.";
           });
+          return false;
         }
       }
 
@@ -534,6 +542,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         setState(() {
           _errorMessage = "No changes to save.";
         });
+        return false;
       }
 
       // Show beautiful themed snackbar if updated
@@ -564,15 +573,20 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           ),
         );
+        return true; // Return true for successful save
       }
+      
+      return false;
     } on AppwriteException catch (e) {
       setState(() {
         _errorMessage = e.message ?? "Failed to save changes.";
       });
+      return false;
     } catch (e) {
       setState(() {
         _errorMessage = "Failed to save changes.";
       });
+      return false;
     } finally {
       setState(() {
         _isLoading = false;
@@ -622,7 +636,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 ),
                 onPressed: _isSaveEnabled && !_isLoading
                     ? () async {
-                        await _saveProfileChanges();
+                        final success = await _saveProfileChanges();
+                        if (success) {
+                          // Return true to indicate successful save
+                          Navigator.pop(context, true);
+                        }
                       }
                     : null,
                 child: const Text(

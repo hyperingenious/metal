@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
-import 'package:metal/appwrite/appwrite.dart';
+import 'package:lushh/appwrite/appwrite.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
 import 'dart:math'; // Added for distance calculation
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+// Environment variables for collections
+const databaseId = String.fromEnvironment('DATABASE_ID');
+const connectionsCollectionId = String.fromEnvironment('CONNECTIONS_COLLECTIONID');
+const locationCollectionId = String.fromEnvironment('LOCATION_COLLECTIONID');
+const updateNowCollectionId = String.fromEnvironment('UPDATE_NOW_COLLECTIONID');
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -46,6 +55,9 @@ class _ExploreScreenState extends State<ExploreScreen>
   bool _distanceLoading = false;
   String? _distanceError;
 
+  // Scroll controller for scrolling to top
+  final ScrollController _scrollController = ScrollController();
+
   // Use different keys for different OS for native localstorage separation
   static String get _localProfilesKey {
     if (Platform.isIOS) return 'explore_profiles_ios';
@@ -59,10 +71,12 @@ class _ExploreScreenState extends State<ExploreScreen>
     return 'explore_profiles_page';
   }
 
+
   @override
   void initState() {
     super.initState();
     _initAndFetchProfiles();
+    _checkForUpdates(); // Add update check
     _swipeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 350),
@@ -86,10 +100,10 @@ class _ExploreScreenState extends State<ExploreScreen>
         });
       }
     });
-    // Fetch distance for the first profile after profiles are loaded
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchAndSetDistance();
-    });
+    // Remove this line - we'll call it after profiles are loaded
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _fetchAndSetDistance();
+    // });
   }
 
   @override
@@ -102,6 +116,13 @@ class _ExploreScreenState extends State<ExploreScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _fetchAndSetDistance();
+  }
+
+  @override
+  void dispose() {
+    _swipeController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   /// Robustly fetches JWT and then fetches profiles, always ensuring a fresh JWT is used.
@@ -146,6 +167,8 @@ class _ExploreScreenState extends State<ExploreScreen>
       setState(() {
         _isLoading = false;
       });
+      // Fetch distance for the first profile after profiles are loaded
+      _fetchAndSetDistance();
       // Preload next batch in background
       _preloadNextProfiles();
       // Also update the cache in the background with latest data
@@ -155,6 +178,8 @@ class _ExploreScreenState extends State<ExploreScreen>
 
     // If not found locally, fetch from server robustly
     await _robustFetchProfiles(page: 0, reset: true);
+    // Fetch distance for the first profile after profiles are loaded
+    _fetchAndSetDistance();
     // Preload next batch in background
     _preloadNextProfiles();
   }
@@ -170,21 +195,13 @@ class _ExploreScreenState extends State<ExploreScreen>
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
         if (loadedProfiles.isNotEmpty) {
-          // Filter out profiles that have existing connections
-          final filteredProfiles = await _filterProfilesWithExistingConnections(loadedProfiles);
-          
-          if (filteredProfiles.isNotEmpty) {
-            setState(() {
-              _profiles = filteredProfiles;
-              _currentProfileIndex = 0;
-              _currentPage = page;
-            });
-            return true;
-          } else {
-            // If all profiles were filtered out, clear the cache and return false
-            await _saveProfilesToLocal([], page);
-            return false;
-          }
+          // No longer filter out profiles with existing connections
+          setState(() {
+            _profiles = loadedProfiles;
+            _currentProfileIndex = 0;
+            _currentPage = page;
+          });
+          return true;
         }
       }
     } catch (e) {
@@ -195,17 +212,17 @@ class _ExploreScreenState extends State<ExploreScreen>
 
   /// Filter out profiles that have existing connections with the current user
   Future<List<Map<String, dynamic>>> _filterProfilesWithExistingConnections(
-    List<Map<String, dynamic>> profiles
+    List<Map<String, dynamic>> profiles,
   ) async {
     try {
       // Get current user id
       final user = await account.get();
       final String currentUserId = user.$id;
-      
+
       // Get all connections where current user is either sender or receiver
       final connectionsResult = await databases.listDocuments(
-        databaseId: '685a90fa0009384c5189',
-        collectionId: '685a95f5001cadd0cfc3',
+        databaseId: databaseId,
+        collectionId: connectionsCollectionId,
         queries: [
           Query.or([
             Query.equal('senderId', currentUserId),
@@ -219,7 +236,7 @@ class _ExploreScreenState extends State<ExploreScreen>
       for (final doc in connectionsResult.documents) {
         final senderId = doc.data['senderId']?.toString();
         final receiverId = doc.data['receiverId']?.toString();
-        
+
         // Add the other user's ID (not the current user's)
         if (senderId == currentUserId && receiverId != null) {
           connectedUserIds.add(receiverId);
@@ -231,10 +248,13 @@ class _ExploreScreenState extends State<ExploreScreen>
       // Filter out profiles that have connections
       final filteredProfiles = profiles.where((profile) {
         final profileUserId = profile['userId']?.toString();
-        return profileUserId != null && !connectedUserIds.contains(profileUserId);
+        return profileUserId != null &&
+            !connectedUserIds.contains(profileUserId);
       }).toList();
 
-      debugPrint('Filtered ${profiles.length - filteredProfiles.length} profiles with existing connections');
+      debugPrint(
+        'Filtered ${profiles.length - filteredProfiles.length} profiles with existing connections',
+      );
       return filteredProfiles;
     } catch (e) {
       debugPrint('Error filtering profiles with connections: $e');
@@ -288,16 +308,14 @@ class _ExploreScreenState extends State<ExploreScreen>
               List<Map<String, dynamic>>.from(
                 profilesList.map((e) => Map<String, dynamic>.from(e)),
               );
-          
-          // Filter out profiles with existing connections before caching
-          final filteredProfiles = await _filterProfilesWithExistingConnections(newProfiles);
-          
+
+          // No longer filter out profiles with existing connections before caching
           // Save to local storage
-          await _saveProfilesToLocal(filteredProfiles, page);
+          await _saveProfilesToLocal(newProfiles, page);
           // If user is still on this page, update UI with new data
           if (mounted && page == _currentPage) {
             setState(() {
-              _profiles = filteredProfiles;
+              _profiles = newProfiles;
               _currentProfileIndex = 0;
             });
           }
@@ -320,6 +338,8 @@ class _ExploreScreenState extends State<ExploreScreen>
         _isLoading = false;
         _fetchingNextBatch = false;
       });
+      // Fetch distance for the first profile after profiles are loaded
+      _fetchAndSetDistance();
       // Also update the cache in the background with latest data
       _updateCacheInBackground(page: page);
       return;
@@ -387,6 +407,8 @@ class _ExploreScreenState extends State<ExploreScreen>
           _hasError = false;
         });
 
+        // Fetch distance for the first profile after profiles are loaded
+        _fetchAndSetDistance();
         // Also update the cache in the background with latest data
         _updateCacheInBackground(page: page);
       } else {
@@ -556,7 +578,7 @@ class _ExploreScreenState extends State<ExploreScreen>
       if (response.statusCode == 200) {
         // Success - Remove profile from cache and current list
         await _removeProfileFromCache(receiverUserId);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -565,7 +587,16 @@ class _ExploreScreenState extends State<ExploreScreen>
             ),
           ),
         );
-        
+
+        // Scroll to top after successful invitation
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        }
+
         // After sending, move to next profile (do not remove from list)
         setState(() {
           _profileHistory.add(_currentProfileIndex);
@@ -645,13 +676,15 @@ class _ExploreScreenState extends State<ExploreScreen>
     try {
       // Remove from current profiles list
       setState(() {
-        _profiles.removeWhere((profile) => 
-          profile['userId']?.toString() == userId);
+        _profiles.removeWhere(
+          (profile) => profile['userId']?.toString() == userId,
+        );
       });
 
       // Remove from preloaded profiles
-      _preloadedProfiles.removeWhere((profile) => 
-        profile['userId']?.toString() == userId);
+      _preloadedProfiles.removeWhere(
+        (profile) => profile['userId']?.toString() == userId,
+      );
 
       // Update local storage cache
       final prefs = await SharedPreferences.getInstance();
@@ -661,11 +694,12 @@ class _ExploreScreenState extends State<ExploreScreen>
         final List<Map<String, dynamic>> cachedProfiles = decoded
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
-        
+
         // Remove the profile from cached list
-        cachedProfiles.removeWhere((profile) => 
-          profile['userId']?.toString() == userId);
-        
+        cachedProfiles.removeWhere(
+          (profile) => profile['userId']?.toString() == userId,
+        );
+
         // Save updated cache back to local storage
         await prefs.setString(_localProfilesKey, json.encode(cachedProfiles));
       }
@@ -723,8 +757,8 @@ class _ExploreScreenState extends State<ExploreScreen>
       final String currentUserId = user.$id;
       // Fetch current user's location from Appwrite
       final locationDocs = await databases.listDocuments(
-        databaseId: '685a90fa0009384c5189',
-        collectionId: '685fe47700022b8331dc',
+        databaseId: databaseId,
+        collectionId: locationCollectionId,
         queries: [Query.equal('user', currentUserId)],
       );
       if (locationDocs.documents.isEmpty) {
@@ -750,7 +784,6 @@ class _ExploreScreenState extends State<ExploreScreen>
       }
       // Get profile's location
       final profile = _profiles[_currentProfileIndex];
-
 
       final location = profile['location'] is Map<String, dynamic>
           ? profile['location']
@@ -802,6 +835,271 @@ class _ExploreScreenState extends State<ExploreScreen>
   }
 
   double _deg2rad(double deg) => deg * (pi / 180);
+
+  // Add update checking methods
+  Future<void> _checkForUpdates() async {
+    try {
+      // Get current app version
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
+
+      // Fetch update info from Appwrite
+      final documents = await databases.listDocuments(
+        databaseId: databaseId,
+        collectionId: updateNowCollectionId,
+        queries: [Query.limit(1)],
+      );
+
+      final updateData = documents.documents.first.data;
+      final latestVersion = updateData['latest_version']?.toString();
+      final updateLink = updateData['updateLink']?.toString();
+      final forceUpdate = updateData['force_update'] == true;
+
+      if (latestVersion == null || updateLink == null) {
+        return;
+      }
+
+      // Compare versions
+      if (_compareVersions(currentVersion, latestVersion) < 0) {
+        if (mounted) {
+          _showUpdateDialog(currentVersion, latestVersion, updateLink, forceUpdate);
+        }
+      }
+    } catch (e) {
+      print('Error checking for updates: $e');
+    }
+  }
+
+  int _compareVersions(String version1, String version2) {
+    final v1Parts = version1.split('.').map(int.parse).toList();
+    final v2Parts = version2.split('.').map(int.parse).toList();
+    
+    // Pad with zeros if needed
+    while (v1Parts.length < v2Parts.length) v1Parts.add(0);
+    while (v2Parts.length < v1Parts.length) v2Parts.add(0);
+    
+    for (int i = 0; i < v1Parts.length; i++) {
+      if (v1Parts[i] < v2Parts[i]) return -1;
+      if (v1Parts[i] > v2Parts[i]) return 1;
+    }
+    return 0;
+  }
+
+  void _showUpdateDialog(String currentVersion, String latestVersion, String updateLink, bool forceUpdate) {
+    showDialog(
+      context: context,
+      barrierDismissible: !forceUpdate,
+      builder: (context) => WillPopScope(
+        onWillPop: () async => !forceUpdate,
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Update icon
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B4DFF).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    PhosphorIconsBold.arrowUp,
+                    color: Color(0xFF8B4DFF),
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Title
+                Text(
+                  forceUpdate ? 'Update Required' : 'Update Available',
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                    color: Color(0xFF3B2357),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                
+                // Subtitle
+                Text(
+                  'A new version is available',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    color: const Color(0xFF6D4B86).withOpacity(0.8),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                
+                // Version info
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F6FA),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF8B4DFF).withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Current',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                              color: const Color(0xFF6D4B86).withOpacity(0.7),
+                            ),
+                          ),
+                          Text(
+                            currentVersion,
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Color(0xFF3B2357),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8B4DFF).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(
+                          PhosphorIconsRegular.arrowRight,
+                          color: Color(0xFF8B4DFF),
+                          size: 16,
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Latest',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                              color: const Color(0xFF6D4B86).withOpacity(0.7),
+                            ),
+                          ),
+                          Text(
+                            latestVersion,
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Color(0xFF3B2357),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                // Update button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        final uri = Uri.parse(updateLink);
+                        final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        if (success && !forceUpdate) {
+                          Navigator.of(context).pop();
+                        }
+                      } catch (e) {
+                        print('Error launching update link: $e');
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8B4DFF),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          PhosphorIconsBold.download,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Update Now',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Dismiss button (only for non-force updates)
+                if (!forceUpdate) ...[
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text(
+                      'Remind me later',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                        color: const Color(0xFF6D4B86).withOpacity(0.7),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -857,7 +1155,7 @@ class _ExploreScreenState extends State<ExploreScreen>
             automaticallyImplyLeading: false,
             titleSpacing: 16,
             title: const Text(
-              'Metal',
+              'lushh',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w700,
@@ -987,7 +1285,7 @@ class _ExploreScreenState extends State<ExploreScreen>
           automaticallyImplyLeading: false,
           titleSpacing: 16,
           title: const Text(
-            'Metal',
+            'lushh',
             style: TextStyle(
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w700,
@@ -1023,6 +1321,7 @@ class _ExploreScreenState extends State<ExploreScreen>
         ),
       ),
       body: SingleChildScrollView(
+        controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: DefaultTextStyle(
           style: const TextStyle(fontFamily: 'Poppins'),
@@ -1172,25 +1471,35 @@ class _ExploreScreenState extends State<ExploreScreen>
                             child: Stack(
                               children: [
                                 image != null && image.isNotEmpty
-                                    ? Image.network(
-                                        image,
+                                    ? CachedNetworkImage(
+                                        imageUrl: image,
                                         width: double.infinity,
                                         height:
                                             MediaQuery.of(context).size.height *
                                             0.8,
                                         fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) =>
-                                                Container(
-                                                  width: double.infinity,
-                                                  height: 420,
-                                                  color: Colors.grey[300],
-                                                  child: const Icon(
-                                                    Icons.person,
-                                                    size: 80,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
+                                        placeholder: (context, url) =>
+                                            Container(
+                                              width: double.infinity,
+                                              height: 420,
+                                              color: Colors.grey[300],
+                                              child: const Icon(
+                                                Icons.person,
+                                                size: 80,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                        errorWidget: (context, url, error) =>
+                                            Container(
+                                              width: double.infinity,
+                                              height: 420,
+                                              color: Colors.grey[300],
+                                              child: const Icon(
+                                                Icons.person,
+                                                size: 80,
+                                                color: Colors.white,
+                                              ),
+                                            ),
                                       )
                                     : Container(
                                         width: double.infinity,
@@ -1656,12 +1965,25 @@ class _ExploreScreenState extends State<ExploreScreen>
                           child: SizedBox(
                             width: double.infinity,
                             height: MediaQuery.of(context).size.height * 0.8,
-                            child: Image.network(
-                              imgUrl.toString(),
+                            child: CachedNetworkImage(
+                              imageUrl: imgUrl.toString(),
                               width: double.infinity,
                               height: MediaQuery.of(context).size.height * 0.8,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
+                              placeholder: (context, url) =>
+                                  Container(
+                                    width: double.infinity,
+                                    height:
+                                        MediaQuery.of(context).size.height *
+                                        0.8,
+                                    color: Colors.grey[300],
+                                    child: const Icon(
+                                      Icons.broken_image,
+                                      size: 80,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                              errorWidget: (context, url, error) =>
                                   Container(
                                     width: double.infinity,
                                     height:
@@ -1729,6 +2051,54 @@ class _ExploreScreenState extends State<ExploreScreen>
                   },
                 ),
               ),
+              
+              // Add Friend Button Section
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _sendingInvite ? null : _sendInvite,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B4DFF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(19),
+                    ),
+                    elevation: 0,
+                    shadowColor: const Color(0xFF8B4DFF).withOpacity(0.3),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_sendingInvite)
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      else
+                        const Icon(
+                          PhosphorIconsBold.userPlus,
+                          size: 20,
+                        ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _sendingInvite ? 'Sending Invite...' : 'Start Talking',
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
             ],
           ),
         ),

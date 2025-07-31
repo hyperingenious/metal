@@ -1,12 +1,13 @@
 // main.dart
 import 'package:flutter/material.dart';
-import 'package:metal/screens/auth_gate.dart';
-import 'package:metal/screens/home_screen.dart';
-import 'package:metal/screens/phone_input_screen.dart';
-import 'package:metal/screens/profile_completion/profile_completion_router.dart';
-import 'package:metal/screens/settings_screen.dart';
+import 'package:lushh/screens/auth_gate.dart';
+import 'package:lushh/screens/home_screen.dart';
+import 'package:lushh/screens/phone_input_screen.dart';
+import 'package:lushh/screens/profile_completion/profile_completion_router.dart';
+import 'package:lushh/screens/settings_screen.dart';
 
-void main(){
+
+void main() {
   runApp(const MyApp());
 }
 

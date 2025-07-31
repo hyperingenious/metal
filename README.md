@@ -1,4 +1,4 @@
-# metal
+# lushh
 
 A new Flutter project.
 

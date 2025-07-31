@@ -42,8 +42,6 @@ Future<List<Map<String, dynamic>>> fetchActiveChatsWithLastMessage() async {
     // For each chat, fetch the last message from the messages collection
     // We'll use Appwrite's Databases API directly
     final databases = Databases(client);
-    const String dbId = '685a90fa0009384c5189';
-    const String messagesCollectionId = '685aae75000e3642cbc0';
 
     // Get current user id
     final user = await account.get();
@@ -57,7 +55,7 @@ Future<List<Map<String, dynamic>>> fetchActiveChatsWithLastMessage() async {
       try {
         // Fetch last message
         final messagesResult = await databases.listDocuments(
-          databaseId: dbId,
+          databaseId: databaseId,
           collectionId: messagesCollectionId,
           queries: [
             Query.equal('connectionId', connectionId),
@@ -99,7 +97,7 @@ Future<List<Map<String, dynamic>>> fetchActiveChatsWithLastMessage() async {
       // Fetch unread count for this chat
       try {
         final unreadResult = await databases.listDocuments(
-          databaseId: dbId,
+          databaseId: databaseId,
           collectionId: messagesCollectionId,
           queries: [
             Query.equal('connectionId', connectionId),
@@ -241,16 +239,33 @@ class _ChatsScreenState extends State<ChatsScreen> {
         return;
       }
 
-      final databases = Databases(client);
-      const String dbId = '685a90fa0009384c5189';
-      const String connectionsCollectionId = '685a95f5001cadd0cfc3';
+      // Get JWT for authentication
+      final jwt = await account.createJWT();
+      final token = jwt.jwt;
 
-      await databases.deleteDocument(
-        databaseId: dbId,
-        collectionId: connectionsCollectionId,
-        documentId: connectionId,
+      // Call the API endpoint instead of direct Appwrite deletion
+      final uri = Uri.parse(
+        'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/chats/remove',
       );
+
+      final httpClient = HttpClient();
+      final request = await httpClient.postUrl(uri);
+      request.headers.set('Content-Type', 'application/json');
+      request.headers.set('Authorization', 'Bearer $token');
       
+      // Send the connectionId in the request body
+      final requestBody = jsonEncode({'connectionId': connectionId});
+      request.write(requestBody);
+      
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          jsonDecode(body)['error'] ?? 'Failed to remove chat',
+        );
+      }
+
       // Optionally, show a snackbar
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

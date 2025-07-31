@@ -1,18 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
-import 'package:metal/appwrite/appwrite.dart';
-import 'package:metal/screens/otp_screen.dart';
-import 'package:metal/screens/profile_completion/screen_1.dart';
-import 'package:metal/screens/profile_completion/screen_2.dart';
-import 'package:metal/screens/profile_completion/screen_3.dart';
-import 'package:metal/screens/profile_completion/screen_4.dart';
-import 'package:metal/screens/profile_completion/screen_5.dart';
-import 'package:metal/screens/profile_completion/screen_6.dart';
-import 'package:metal/screens/profile_completion/screen_7.dart';
-import 'package:metal/screens/profile_completion/screen_8.dart';
-// import 'dob_name_screen.dart';    // first onboarding screen
-// import 'hobbies_screen.dart';     // next screen (optional)
-// import 'home_screen.dart';        // final screen
+import 'package:lushh/appwrite/appwrite.dart' as appwrite;
+import 'package:lushh/screens/profile_completion/screen_1.dart';
+import 'package:lushh/screens/profile_completion/screen_2.dart';
+import 'package:lushh/screens/profile_completion/screen_3.dart';
+import 'package:lushh/screens/profile_completion/screen_4.dart';
+import 'package:lushh/screens/profile_completion/screen_5.dart';
+import 'package:lushh/screens/profile_completion/screen_6.dart';
+import 'package:lushh/screens/profile_completion/screen_7.dart';
+import 'package:lushh/screens/profile_completion/screen_8.dart';
+
+// Import all IDs from environment using String.fromEnvironment
+const appwriteDevKey = String.fromEnvironment('APPWRITE_DEV_KEY');
+const appwriteEndpoint = String.fromEnvironment('APPWRITE_ENDPOINT');
+const projectId = String.fromEnvironment('PROJECT_ID');
+const databaseId = String.fromEnvironment('DATABASE_ID');
+const biodataCollectionId = String.fromEnvironment('BIODATA_COLLECTIONID');
+const blockedCollectionId = String.fromEnvironment('BLOCKED_COLLECTIONID');
+const completionStatusCollectionId = String.fromEnvironment(
+  'COMPLETION_STATUS_COLLECTIONID',
+);
+const connectionsCollectionId = String.fromEnvironment(
+  'CONNECTIONS_COLLECTIONID',
+);
+const hasShownCollectionId = String.fromEnvironment('HAS_SHOWN_COLLECTIONID');
+const hobbiesCollectionId = String.fromEnvironment('HOBBIES_COLLECTIONID');
+const imageCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
+const locationCollectionId = String.fromEnvironment('LOCATION_COLLECTIONID');
+const messageInboxCollectionId = String.fromEnvironment(
+  'MESSAGE_INBOX_COLLECTIONID',
+);
+const messagesCollectionId = String.fromEnvironment('MESSAGES_COLLECTIONID');
+const notificationsCollectionId = String.fromEnvironment(
+  'NOTIFICATIONS_COLLECTIONID',
+);
+const preferenceCollectionId = String.fromEnvironment(
+  'PREFERENCE_COLLECTIONID',
+);
+const reportsCollectionId = String.fromEnvironment('REPORTS_COLLECTIONID');
+const usersCollectionId = String.fromEnvironment('USERS_COLLECTIONID');
 
 class ProfileCompletionRouter extends StatefulWidget {
   const ProfileCompletionRouter({super.key});
@@ -31,11 +57,20 @@ class _ProfileCompletionRouterState extends State<ProfileCompletionRouter> {
     _checkProfileStatus();
   }
 
-  String databaseId = '685a90fa0009384c5189';
-  String completionStatusCollectionId = '686777d300169b27b237';
+  // Use environment variables from above
 
   Future<void> _checkProfileStatus() async {
     try {
+      // You will need to initialize your Appwrite client, account, and databases here using the above constants.
+      final client = Client()
+        ..setEndpoint(appwriteEndpoint)
+        ..setProject(projectId)
+        ..setSelfSigned(status: true)
+        ..setDevKey(appwriteDevKey);
+
+      final account = Account(client);
+      final databases = Databases(client);
+
       final user = await account.get();
       final userId = user.$id;
 

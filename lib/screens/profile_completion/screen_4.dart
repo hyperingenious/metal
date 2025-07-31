@@ -1,7 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:metal/appwrite/appwrite.dart';
+import 'package:lushh/appwrite/appwrite.dart';
 import 'package:appwrite/appwrite.dart';
-import 'package:metal/screens/profile_completion/screen_5.dart';
+import 'package:lushh/screens/profile_completion/screen_5.dart';
+
+// Import all IDs from .env using String.fromEnvironment
+const String databaseId = String.fromEnvironment('DATABASE_ID');
+const String completionStatusCollectionId = String.fromEnvironment(
+  'COMPLETION_STATUS_COLLECTIONID',
+);
+const String hobbiesCollectionID = String.fromEnvironment(
+  'HOBBIES_COLLECTIONID',
+);
+const String bioDataCollectionID = String.fromEnvironment(
+  'BIODATA_COLLECTIONID',
+);
 
 class AddHobbiesScreen extends StatefulWidget {
   const AddHobbiesScreen({super.key});
@@ -14,11 +26,6 @@ class _AddHobbiesScreenState extends State<AddHobbiesScreen> {
   List<Map<String, dynamic>> allHobbies = [];
   final List<String> selectedHobbyIds = [];
   bool _loading = true;
-
-  String databaseId = '685a90fa0009384c5189';
-  String completionStatusCollectionId = '686777d300169b27b237';
-  String hobbiesCollectionID = '685acd8b00010dd66e1c';
-  String bioDataCollectionID = '685aac1d0013a8a6752f';
 
   @override
   void initState() {
@@ -46,9 +53,9 @@ class _AddHobbiesScreenState extends State<AddHobbiesScreen> {
       setState(() {
         _loading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to fetch hobbies: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to fetch hobbies: $e")));
     }
   }
 
@@ -232,7 +239,8 @@ class _AddHobbiesScreenState extends State<AddHobbiesScreen> {
                                   children: allHobbies.map((hobby) {
                                     final hobbyId = hobby['id'] as String;
                                     final hobbyName = hobby['name'] as String;
-                                    final isSelected = selectedHobbyIds.contains(hobbyId);
+                                    final isSelected = selectedHobbyIds
+                                        .contains(hobbyId);
                                     return ChoiceChip(
                                       label: Text(
                                         hobbyName,
@@ -240,7 +248,9 @@ class _AddHobbiesScreenState extends State<AddHobbiesScreen> {
                                           fontFamily: 'SF Pro Display',
                                           fontWeight: FontWeight.w500,
                                           fontSize: 15,
-                                          color: isSelected ? Colors.white : Colors.black87,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : Colors.black87,
                                         ),
                                       ),
                                       selected: isSelected,

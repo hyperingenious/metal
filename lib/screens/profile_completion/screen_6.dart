@@ -1,8 +1,20 @@
 import 'package:flutter/material.dart';
 
-import 'package:metal/appwrite/appwrite.dart';
+import 'package:lushh/appwrite/appwrite.dart';
 import 'package:appwrite/appwrite.dart';
-import 'package:metal/screens/profile_completion/screen_7.dart';
+import 'package:lushh/screens/profile_completion/screen_7.dart';
+
+// Import all ids from .env using String.fromEnvironment
+const String databaseId = String.fromEnvironment('DATABASE_ID');
+const String completionStatusCollectionId = String.fromEnvironment(
+  'COMPLETION_STATUS_COLLECTIONID',
+);
+const String preferenceCollectionID = String.fromEnvironment(
+  'PREFERENCE_COLLECTIONID',
+);
+const String hobbiesCollectionID = String.fromEnvironment(
+  'HOBBIES_COLLECTIONID',
+);
 
 class AddPreferredMaxDistAndHobbiesScreen extends StatefulWidget {
   const AddPreferredMaxDistAndHobbiesScreen({super.key});
@@ -23,11 +35,6 @@ class _AddPreferredMaxDistAndHobbiesScreenState
   List<Map<String, dynamic>> allHobbies = [];
   final List<String> selectedHobbyIds = [];
   bool _loading = true;
-
-  String databaseId = '685a90fa0009384c5189';
-  String completionStatusCollectionId = '686777d300169b27b237';
-  String preferenceCollectionID = '685ab0ab0009a8b2d795';
-  String hobbiesCollectionID = '685acd8b00010dd66e1c';
 
   @override
   void initState() {
@@ -148,15 +155,13 @@ class _AddPreferredMaxDistAndHobbiesScreenState
         );
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Preferences saved!")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Preferences saved!")));
       // Navigate to AddImagesScreen after saving preferences
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => const AddImagesScreen(),
-        ),
-      );
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (context) => const AddImagesScreen()));
     } on AppwriteException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -239,7 +244,9 @@ class _AddPreferredMaxDistAndHobbiesScreenState
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 24),
+                          horizontal: 20,
+                          vertical: 24,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(18),
@@ -265,12 +272,15 @@ class _AddPreferredMaxDistAndHobbiesScreenState
                             SliderTheme(
                               data: SliderTheme.of(context).copyWith(
                                 activeTrackColor: accentColor,
-                                inactiveTrackColor: accentColor.withOpacity(0.2),
+                                inactiveTrackColor: accentColor.withOpacity(
+                                  0.2,
+                                ),
                                 thumbColor: accentColor,
                                 overlayColor: accentColor.withOpacity(0.15),
                                 trackHeight: 5,
                                 thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 13),
+                                  enabledThumbRadius: 13,
+                                ),
                               ),
                               child: Slider(
                                 value: _selectedMaxDistance.toDouble(),

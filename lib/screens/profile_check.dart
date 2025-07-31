@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:metal/appwrite/appwrite.dart';
+import 'package:lushh/appwrite/appwrite.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'dart:math';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
 
+// Import all ids from .env using String.fromEnvironment
+// Updated to match actual .env variable names
+const databaseId = String.fromEnvironment('DATABASE_ID');
+const usersCollectionId = String.fromEnvironment('USERS_COLLECTIONID');
+const biodataCollectionId = String.fromEnvironment('BIODATA_COLLECTIONID');
+const imagesCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
+const locationCollectionId = String.fromEnvironment('LOCATION_COLLECTIONID');
+
 class ProfileCheck extends StatefulWidget {
   final String userId;
-  
+
   const ProfileCheck({super.key, required this.userId});
 
   @override
@@ -17,7 +25,7 @@ class ProfileCheck extends StatefulWidget {
 class _ProfileCheckState extends State<ProfileCheck> {
   bool _isLoading = true;
   bool _hasError = false;
-  
+
   Map<String, dynamic>? _profile;
 
   @override
@@ -34,39 +42,46 @@ class _ProfileCheckState extends State<ProfileCheck> {
 
     try {
       final userId = widget.userId;
-      final databaseId = '685a90fa0009384c5189';
 
       // 1. Fetch user document
       final userDocs = await databases.listDocuments(
         databaseId: databaseId,
-        collectionId: '68616ecc00163ed41e57', // users collection
+        collectionId: usersCollectionId, // users collection
         queries: [Query.equal('\$id', userId)],
       );
-      final userDoc = userDocs.documents.isNotEmpty ? userDocs.documents.first : null;
+      final userDoc = userDocs.documents.isNotEmpty
+          ? userDocs.documents.first
+          : null;
 
       // 2. Fetch biodata document
       final biodataDocs = await databases.listDocuments(
         databaseId: databaseId,
-        collectionId: '685aac1d0013a8a6752f', // biodata collection
+        collectionId: biodataCollectionId, // biodata collection
         queries: [Query.equal('user', userId)],
       );
-      final biodataDoc = biodataDocs.documents.isNotEmpty ? biodataDocs.documents.first : null;
+      final biodataDoc = biodataDocs.documents.isNotEmpty
+          ? biodataDocs.documents.first
+          : null;
 
       // 3. Fetch images document
       final imagesDocs = await databases.listDocuments(
         databaseId: databaseId,
-        collectionId: '685aa0ef00090023c8a3', // images collection
+        collectionId: imagesCollectionId, // images collection
         queries: [Query.equal('user', userId)],
       );
-      final imagesDoc = imagesDocs.documents.isNotEmpty ? imagesDocs.documents.first : null;
+      final imagesDoc = imagesDocs.documents.isNotEmpty
+          ? imagesDocs.documents.first
+          : null;
 
       // 4. Fetch location document
       final locationDocs = await databases.listDocuments(
         databaseId: databaseId,
-        collectionId: '685fe47700022b8331dc', // location collection
+        collectionId: locationCollectionId, // location collection
         queries: [Query.equal('user', userId)],
       );
-      final locationDoc = locationDocs.documents.isNotEmpty ? locationDocs.documents.first : null;
+      final locationDoc = locationDocs.documents.isNotEmpty
+          ? locationDocs.documents.first
+          : null;
 
       // 5. Process hobbies from biodata
       List<Map<String, dynamic>> hobbiesList = [];
@@ -97,7 +112,6 @@ class _ProfileCheckState extends State<ProfileCheck> {
         };
         _isLoading = false;
       });
-      
     } catch (e) {
       setState(() {
         _hasError = true;
@@ -214,13 +228,13 @@ class _ProfileCheckState extends State<ProfileCheck> {
     final user = biodata['user'] is Map<String, dynamic>
         ? biodata['user']
         : <String, dynamic>{};
-    
+
     final String name = user['name']?.toString() ?? 'Unknown';
     final String? gender = biodata['gender']?.toString();
     final String? bio = biodata['bio']?.toString();
-    final List<String> images = _profile!['images'] is List 
-    ? List<String>.from(_profile!['images'])
-    : <String>[];
+    final List<String> images = _profile!['images'] is List
+        ? List<String>.from(_profile!['images'])
+        : <String>[];
     final String? image = images.isNotEmpty ? images.first : null;
     final String? city = location['city']?.toString();
     final String? state = location['state']?.toString();
@@ -307,19 +321,22 @@ class _ProfileCheckState extends State<ProfileCheck> {
                                 ? Image.network(
                                     image,
                                     width: double.infinity,
-                                    height: MediaQuery.of(context).size.height * 0.8,
+                                    height:
+                                        MediaQuery.of(context).size.height *
+                                        0.8,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        Container(
-                                          width: double.infinity,
-                                          height: 420,
-                                          color: Colors.grey[300],
-                                          child: const Icon(
-                                            Icons.person,
-                                            size: 80,
-                                            color: Colors.white,
-                                          ),
-                                        ),
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Container(
+                                              width: double.infinity,
+                                              height: 420,
+                                              color: Colors.grey[300],
+                                              child: const Icon(
+                                                Icons.person,
+                                                size: 80,
+                                                color: Colors.white,
+                                              ),
+                                            ),
                                   )
                                 : Container(
                                     width: double.infinity,
@@ -405,9 +422,7 @@ class _ProfileCheckState extends State<ProfileCheck> {
                                   if (professionSubtype != null &&
                                       professionSubtype.isNotEmpty)
                                     Padding(
-                                      padding: const EdgeInsets.only(
-                                        top: 1.5,
-                                      ),
+                                      padding: const EdgeInsets.only(top: 1.5),
                                       child: Text(
                                         professionSubtype,
                                         style: const TextStyle(
@@ -517,12 +532,12 @@ class _ProfileCheckState extends State<ProfileCheck> {
                       children: hobbies.map<Widget>((hobby) {
                         final String hobbyName =
                             hobby is Map && hobby['hobby_name'] != null
-                                ? hobby['hobby_name'].toString()
-                                : '';
+                            ? hobby['hobby_name'].toString()
+                            : '';
                         final String hobbyCategory =
                             hobby is Map && hobby['hobby_category'] != null
-                                ? hobby['hobby_category'].toString()
-                                : '';
+                            ? hobby['hobby_category'].toString()
+                            : '';
                         return Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
@@ -535,7 +550,7 @@ class _ProfileCheckState extends State<ProfileCheck> {
                           child: Text(
                             hobbyName.isNotEmpty
                                 ? hobbyName[0].toUpperCase() +
-                                    hobbyName.substring(1)
+                                      hobbyName.substring(1)
                                 : hobbyCategory,
                             style: const TextStyle(
                               fontFamily: 'Poppins',
@@ -707,7 +722,8 @@ class _ProfileCheckState extends State<ProfileCheck> {
                               errorBuilder: (context, error, stackTrace) =>
                                   Container(
                                     width: double.infinity,
-                                    height: MediaQuery.of(context).size.height *
+                                    height:
+                                        MediaQuery.of(context).size.height *
                                         0.8,
                                     color: Colors.grey[300],
                                     child: const Icon(

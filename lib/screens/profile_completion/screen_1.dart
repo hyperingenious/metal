@@ -1,12 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:intl/intl.dart';
-import 'package:metal/appwrite/appwrite.dart';
-import 'package:metal/screens/profile_completion/screen_2.dart';
+import 'package:lushh/screens/profile_completion/screen_2.dart';
+
+// Import IDs and keys using String.fromEnvironment
+const appwriteDevKey = String.fromEnvironment('APPWRITE_DEV_KEY');
+const appwriteEndpoint = String.fromEnvironment('APPWRITE_ENDPOINT');
+const projectId = String.fromEnvironment('PROJECT_ID');
+const databaseId = String.fromEnvironment('DATABASE_ID');
+const biodataCollectionId = String.fromEnvironment('BIODATA_COLLECTIONID');
+const blockedCollectionId = String.fromEnvironment('BLOCKED_COLLECTIONID');
+const completionStatusCollectionId = String.fromEnvironment(
+  'COMPLETION_STATUS_COLLECTIONID',
+);
+const connectionsCollectionId = String.fromEnvironment(
+  'CONNECTIONS_COLLECTIONID',
+);
+const hasShownCollectionId = String.fromEnvironment('HAS_SHOWN_COLLECTIONID');
+const hobbiesCollectionId = String.fromEnvironment('HOBBIES_COLLECTIONID');
+const imageCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
+const locationCollectionId = String.fromEnvironment('LOCATION_COLLECTIONID');
+const messageInboxCollectionId = String.fromEnvironment(
+  'MESSAGE_INBOX_COLLECTIONID',
+);
+const messagesCollectionId = String.fromEnvironment('MESSAGES_COLLECTIONID');
+const notificationsCollectionId = String.fromEnvironment(
+  'NOTIFICATIONS_COLLECTIONID',
+);
+const preferenceCollectionId = String.fromEnvironment(
+  'PREFERENCE_COLLECTIONID',
+);
+const reportsCollectionId = String.fromEnvironment('REPORTS_COLLECTIONID');
+const usersCollectionId = String.fromEnvironment('USERS_COLLECTIONID');
+
+final client = Client()
+  ..setEndpoint(appwriteEndpoint)
+  ..setProject(projectId)
+  ..setSelfSigned(status: true)
+  ..setDevKey(appwriteDevKey);
+
+final account = Account(client);
+final databases = Databases(client);
+final storage = Storage(client);
+final realtime = Realtime(client);
 
 class AddDobAndNameScreen extends StatefulWidget {
   const AddDobAndNameScreen({super.key});
-
   @override
   State<AddDobAndNameScreen> createState() => _AddDobAndNameScreenState();
 }
@@ -15,6 +54,7 @@ class _AddDobAndNameScreenState extends State<AddDobAndNameScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   DateTime? _selectedDate;
+  bool _isLoading = false;
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -44,12 +84,6 @@ class _AddDobAndNameScreenState extends State<AddDobAndNameScreen> {
       setState(() => _selectedDate = picked);
     }
   }
-
-  String databaseId = '685a90fa0009384c5189';
-  String bioDataCollectionID = '685aac1d0013a8a6752f';
-  String userCollectionId = '68616ecc00163ed41e57';
-  String completionStatusCollectionId = '686777d300169b27b237';
-  String preferenceCollectionID = '685ab0ab0009a8b2d795';
 
   Future<void> _submit() async {
     if (_formKey.currentState!.validate() && _selectedDate != null) {
@@ -82,13 +116,13 @@ class _AddDobAndNameScreenState extends State<AddDobAndNameScreen> {
       final userId = user.$id;
       final userBioDataDocument = await databases.listDocuments(
         databaseId: databaseId,
-        collectionId: bioDataCollectionID,
+        collectionId: biodataCollectionId,
         queries: [Query.equal('user', userId)],
       );
 
       final prefeDoc = await databases.listDocuments(
         databaseId: databaseId,
-        collectionId: preferenceCollectionID,
+        collectionId: preferenceCollectionId,
         queries: [
           Query.equal('user', userId),
           Query.select(['\$id']),
@@ -98,16 +132,16 @@ class _AddDobAndNameScreenState extends State<AddDobAndNameScreen> {
       if (prefeDoc.documents.isEmpty) {
         await databases.createDocument(
           databaseId: databaseId,
-          collectionId: preferenceCollectionID,
+          collectionId: preferenceCollectionId,
           documentId: ID.unique(),
-          data: {'user': userId,},
+          data: {'user': userId},
         );
       }
 
       if (userBioDataDocument.total == 0) {
         await databases.createDocument(
           databaseId: databaseId,
-          collectionId: bioDataCollectionID,
+          collectionId: biodataCollectionId,
           documentId: ID.unique(),
           data: {'user': userId, 'dob': dob},
         );
@@ -115,7 +149,7 @@ class _AddDobAndNameScreenState extends State<AddDobAndNameScreen> {
 
       await databases.updateDocument(
         databaseId: databaseId,
-        collectionId: userCollectionId,
+        collectionId: usersCollectionId,
         documentId: userId,
         data: {'name': name},
       );
@@ -157,13 +191,18 @@ class _AddDobAndNameScreenState extends State<AddDobAndNameScreen> {
       body: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 40, // Add status bar height + extra space
+              left: 24,
+              right: 24,
+              bottom: 24,
+            ),
             child: Form(
               key: _formKey,
               child: Column(
                 children: [
                   const Text(
-                    "Let’s know you better",
+                    "Let's know you better",
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 24),
@@ -228,7 +267,7 @@ class _AddDobAndNameScreenState extends State<AddDobAndNameScreen> {
             child: SizedBox(
               height: 56,
               child: ElevatedButton.icon(
-                onPressed: _submit,
+                onPressed: _isLoading ? null : _submit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
                   shape: RoundedRectangleBorder(
@@ -237,18 +276,30 @@ class _AddDobAndNameScreenState extends State<AddDobAndNameScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   elevation: 2,
                 ),
-                icon: const Icon(Icons.arrow_forward, color: Colors.white),
-                label: const Text(
-                  "Continue",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
+                icon: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Icon(Icons.arrow_forward, color: Colors.white),
+                label: _isLoading
+                    ? const Text(
+                        "Loading...",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        "Continue",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
           ),
+
         ],
       ),
     );

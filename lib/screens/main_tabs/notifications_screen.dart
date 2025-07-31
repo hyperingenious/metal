@@ -8,6 +8,13 @@ import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../profile_check.dart';
 
+// Import all ids from .env using String.fromEnvironment
+const String appwriteDatabaseId = String.fromEnvironment('DATABASE_ID');
+const String appwriteNotificationsCollectionId = String.fromEnvironment('NOTIFICATIONS_COLLECTIONID');
+const String appwriteUsersCollectionId = String.fromEnvironment('USERS_COLLECTIONID');
+const String appwriteImagesCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
+const String appwriteConnectionsCollectionId = String.fromEnvironment('CONNECTIONS_COLLECTIONID');
+
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -86,8 +93,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (userId == null) throw Exception('User not found or not logged in.');
 
       final result = await databases.listDocuments(
-        databaseId: '685a90fa0009384c5189',
-        collectionId: '685aae0300185620e41d',
+        databaseId: appwriteDatabaseId,
+        collectionId: appwriteNotificationsCollectionId,
         queries: [Query.equal('to', userId)],
       );
 
@@ -98,8 +105,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         final toUserId = doc.data['to']['\$id'];
         if (fromUserId == null) continue;
         await databases.updateDocument(
-          databaseId: '685a90fa0009384c5189',
-          collectionId: '685aae0300185620e41d',
+          databaseId: appwriteDatabaseId,
+          collectionId: appwriteNotificationsCollectionId,
           documentId: doc.data['\$id'],
           data: {'is_read': true},
         );
@@ -107,8 +114,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         dynamic fromUserDoc;
         try {
           fromUserDoc = await databases.getDocument(
-            databaseId: '685a90fa0009384c5189',
-            collectionId: '68616ecc00163ed41e57',
+            databaseId: appwriteDatabaseId,
+            collectionId: appwriteUsersCollectionId,
             documentId: fromUserId,
             queries: [
               Query.select(['name']),
@@ -129,8 +136,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         dynamic fromUserImage;
         try {
           fromUserImage = await databases.listDocuments(
-            databaseId: '685a90fa0009384c5189',
-            collectionId: '685aa0ef00090023c8a3',
+            databaseId: appwriteDatabaseId,
+            collectionId: appwriteImagesCollectionId,
             queries: [Query.equal('user', fromUserId)],
           );
         } catch (_) {
@@ -161,8 +168,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
         try {
           connectionsDoc = await databases.listDocuments(
-            databaseId: '685a90fa0009384c5189',
-            collectionId: '685a95f5001cadd0cfc3',
+            databaseId: appwriteDatabaseId,
+            collectionId: appwriteConnectionsCollectionId,
             queries: [
               Query.equal('senderId', fromUserId),
               Query.equal('receiverId', toUserId),
@@ -227,8 +234,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (userId == null) throw Exception('User not found or not logged in.');
 
       final result = await databases.listDocuments(
-        databaseId: '685a90fa0009384c5189',
-        collectionId: '685a95f5001cadd0cfc3',
+        databaseId: appwriteDatabaseId,
+        collectionId: appwriteConnectionsCollectionId,
         queries: [
           Query.equal('status', 'pending'),
           Query.equal('senderId', userId),
@@ -261,8 +268,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         if (receiverName.isEmpty && receiverId.isNotEmpty) {
           try {
             final userDoc = await databases.getDocument(
-              databaseId: '685a90fa0009384c5189',
-              collectionId: '68616ecc00163ed41e57',
+              databaseId: appwriteDatabaseId,
+              collectionId: appwriteUsersCollectionId,
               documentId: receiverId,
               queries: [
                 Query.select(['name']),
@@ -283,8 +290,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         if (receiverId.isNotEmpty) {
           try {
             final imgDoc = await databases.listDocuments(
-              databaseId: '685a90fa0009384c5189',
-              collectionId: '685aa0ef00090023c8a3',
+              databaseId: appwriteDatabaseId,
+              collectionId: appwriteImagesCollectionId,
               queries: [Query.equal('user', receiverId)],
             );
             debugPrint(
@@ -477,8 +484,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
     try {
       await databases.deleteDocument(
-        databaseId: '685a90fa0009384c5189',
-        collectionId: '685a95f5001cadd0cfc3',
+        databaseId: appwriteDatabaseId,
+        collectionId: appwriteConnectionsCollectionId,
         documentId: connectionId,
       );
       ScaffoldMessenger.of(

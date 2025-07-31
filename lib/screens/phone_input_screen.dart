@@ -3,6 +3,26 @@ import 'package:appwrite/appwrite.dart';
 import '../appwrite/appwrite.dart';
 import 'otp_screen.dart';
 
+// Import all ids from .env using String.fromEnvironment
+const String appwriteEndpoint = String.fromEnvironment('APPWRITE_ENDPOINT');
+const String projectId = String.fromEnvironment('PROJECT_ID');
+const String databaseId = String.fromEnvironment('DATABASE_ID');
+const String storageBucketId = String.fromEnvironment('STORAGE_BUCKET_ID');
+const String biodataCollectionId = String.fromEnvironment('BIODATA_COLLECTIONID');
+const String blockedCollectionId = String.fromEnvironment('BLOCKED_COLLECTIONID');
+const String completionStatusCollectionId = String.fromEnvironment('COMPLETION_STATUS_COLLECTIONID');
+const String connectionsCollectionId = String.fromEnvironment('CONNECTIONS_COLLECTIONID');
+const String hasShownCollectionId = String.fromEnvironment('HAS_SHOWN_COLLECTIONID');
+const String hobbiesCollectionId = String.fromEnvironment('HOBBIES_COLLECTIONID');
+const String imageCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
+const String locationCollectionId = String.fromEnvironment('LOCATION_COLLECTIONID');
+const String messageInboxCollectionId = String.fromEnvironment('MESSAGE_INBOX_COLLECTIONID');
+const String messagesCollectionId = String.fromEnvironment('MESSAGES_COLLECTIONID');
+const String notificationsCollectionId = String.fromEnvironment('NOTIFICATIONS_COLLECTIONID');
+const String preferenceCollectionId = String.fromEnvironment('PREFERENCE_COLLECTIONID');
+const String reportsCollectionId = String.fromEnvironment('REPORTS_COLLECTIONID');
+const String usersCollectionId = String.fromEnvironment('USERS_COLLECTIONID');
+
 class PhoneInputScreen extends StatefulWidget {
   const PhoneInputScreen({super.key});
 
@@ -65,6 +85,9 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
       setState(() => _isLoading = false);
     }
   }
+
+  // The environment variable panel and tile widgets are removed from the UI
+  // to avoid printing IDs in the UI.
 
   @override
   Widget build(BuildContext context) {
@@ -222,6 +245,7 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
+                // The environment variables panel is removed from the UI.
                 // Terms
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 32),

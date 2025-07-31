@@ -7,6 +7,12 @@ import 'main_tabs/notifications_screen.dart';
 import 'main_tabs/chats_screen.dart';
 import 'package:appwrite/appwrite.dart';
 
+// Import all ids from .env using String.fromEnvironment
+const String kDatabaseId = String.fromEnvironment('DATABASE_ID');
+const String kNotificationsCollectionId = String.fromEnvironment('NOTIFICATIONS_COLLECTIONID');
+const String kConnectionsCollectionId = String.fromEnvironment('CONNECTIONS_COLLECTIONID');
+const String kMessagesCollectionId = String.fromEnvironment('MESSAGES_COLLECTIONID');
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -54,8 +60,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Query notifications where userId matches and is_read == false
       final result = await databases.listDocuments(
-        databaseId: '685a90fa0009384c5189',
-        collectionId: '685aae0300185620e41d',
+        databaseId: kDatabaseId,
+        collectionId: kNotificationsCollectionId,
         queries: [Query.equal('to', userId), Query.equal('is_read', false)],
       );
 
@@ -82,9 +88,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // 1. Get all connectionIds where senderId or receiverId == userId
       final connectionsResult = await databases.listDocuments(
-        databaseId: '685a90fa0009384c5189',
-        collectionId:
-            '685a95f5001cadd0cfc3', // <-- Replace with your actual connection collection ID
+        databaseId: kDatabaseId,
+        collectionId: kConnectionsCollectionId, // from .env
         queries: [
           Query.or([
             Query.equal('senderId', userId),
@@ -106,9 +111,8 @@ class _HomeScreenState extends State<HomeScreen> {
         int totalUnread = 0;
         for (final connId in connectionIds) {
           final messagesResult = await databases.listDocuments(
-            databaseId: '685a90fa0009384c5189',
-            collectionId:
-                '685aae75000e3642cbc0', // <-- Replace with your actual messages collection ID
+            databaseId: kDatabaseId,
+            collectionId: kMessagesCollectionId, // from .env
             queries: [
               Query.equal('connectionId', connId),
               Query.equal('is_read', false),

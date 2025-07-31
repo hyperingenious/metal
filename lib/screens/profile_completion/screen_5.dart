@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:metal/appwrite/appwrite.dart';
+import 'package:lushh/appwrite/appwrite.dart';
 import 'package:appwrite/appwrite.dart';
-import 'package:metal/screens/profile_completion/screen_6.dart';
+import 'package:lushh/screens/profile_completion/screen_6.dart';
+
+// Import IDs from .env using String.fromEnvironment
+const String databaseId = String.fromEnvironment('DATABASE_ID');
+const String completionStatusCollectionId = String.fromEnvironment(
+  'COMPLETION_STATUS_COLLECTIONID',
+);
+const String preferenceCollectionID = String.fromEnvironment(
+  'PREFERENCE_COLLECTIONID',
+);
 
 class AddMinMaxAgeScreen extends StatefulWidget {
   const AddMinMaxAgeScreen({super.key});
@@ -18,10 +27,6 @@ class _AddMinMaxAgeScreenState extends State<AddMinMaxAgeScreen> {
   // Selected range as integers
   int _minAge = 22;
   int _maxAge = 30;
-
-  String databaseId = '685a90fa0009384c5189';
-  String completionStatusCollectionId = '686777d300169b27b237';
-  String preferenceCollectionID = '685ab0ab0009a8b2d795';
 
   bool _loading = false;
 
@@ -63,10 +68,7 @@ class _AddMinMaxAgeScreenState extends State<AddMinMaxAgeScreen> {
         databaseId: databaseId,
         collectionId: preferenceCollectionID,
         documentId: prefDocId,
-        data: {
-          'min_age': _minAge,
-          'max_age': _maxAge,
-        },
+        data: {'min_age': _minAge, 'max_age': _maxAge},
       );
 
       final userCompletionStatusDocument = await databases.listDocuments(
@@ -89,10 +91,10 @@ class _AddMinMaxAgeScreenState extends State<AddMinMaxAgeScreen> {
       }
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => AddPreferredMaxDistAndHobbiesScreen()),
+        MaterialPageRoute(
+          builder: (_) => AddPreferredMaxDistAndHobbiesScreen(),
+        ),
       );
- 
-
     } on AppwriteException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -207,7 +209,10 @@ class _AddMinMaxAgeScreenState extends State<AddMinMaxAgeScreen> {
                                 ),
                                 const SizedBox(height: 24),
                                 RangeSlider(
-                                  values: RangeValues(_minAge.toDouble(), _maxAge.toDouble()),
+                                  values: RangeValues(
+                                    _minAge.toDouble(),
+                                    _maxAge.toDouble(),
+                                  ),
                                   min: minAllowedAge.toDouble(),
                                   max: maxAllowedAge.toDouble(),
                                   divisions: maxAllowedAge - minAllowedAge,
@@ -227,7 +232,8 @@ class _AddMinMaxAgeScreenState extends State<AddMinMaxAgeScreen> {
                                   },
                                 ),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       "Min: $_minAge",

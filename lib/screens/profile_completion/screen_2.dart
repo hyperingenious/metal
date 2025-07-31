@@ -1,8 +1,38 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
-import 'package:metal/appwrite/appwrite.dart';
-import 'package:metal/screens/profile_completion/screen_3.dart';
+import 'package:lushh/appwrite/appwrite.dart';
+import 'package:lushh/screens/profile_completion/screen_3.dart';
+
+// Import all variables using String.fromEnvironment
+const appwriteDevKey = String.fromEnvironment('APPWRITE_DEV_KEY');
+const appwriteEndpoint = String.fromEnvironment('APPWRITE_ENDPOINT');
+const projectId = String.fromEnvironment('PROJECT_ID');
+const databaseId = String.fromEnvironment('DATABASE_ID');
+const biodataCollectionId = String.fromEnvironment('BIODATA_COLLECTIONID');
+const blockedCollectionId = String.fromEnvironment('BLOCKED_COLLECTIONID');
+const completionStatusCollectionId = String.fromEnvironment(
+  'COMPLETION_STATUS_COLLECTIONID',
+);
+const connectionsCollectionId = String.fromEnvironment(
+  'CONNECTIONS_COLLECTIONID',
+);
+const hasShownCollectionId = String.fromEnvironment('HAS_SHOWN_COLLECTIONID');
+const hobbiesCollectionId = String.fromEnvironment('HOBBIES_COLLECTIONID');
+const imageCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
+const locationCollectionId = String.fromEnvironment('LOCATION_COLLECTIONID');
+const messageInboxCollectionId = String.fromEnvironment(
+  'MESSAGE_INBOX_COLLECTIONID',
+);
+const messagesCollectionId = String.fromEnvironment('MESSAGES_COLLECTIONID');
+const notificationsCollectionId = String.fromEnvironment(
+  'NOTIFICATIONS_COLLECTIONID',
+);
+const preferenceCollectionId = String.fromEnvironment(
+  'PREFERENCE_COLLECTIONID',
+);
+const reportsCollectionId = String.fromEnvironment('REPORTS_COLLECTIONID');
+const usersCollectionId = String.fromEnvironment('USERS_COLLECTIONID');
 
 class AddHeightScreen extends StatefulWidget {
   const AddHeightScreen({super.key});
@@ -11,27 +41,24 @@ class AddHeightScreen extends StatefulWidget {
   State<AddHeightScreen> createState() => _AddHeightScreenState();
 }
 
-String databaseId = '685a90fa0009384c5189';
-String bioDataCollectionID = '685aac1d0013a8a6752f';
-String userCollectionId = '68616ecc00163ed41e57';
-String completionStatusCollectionId = '686777d300169b27b237';
-
 class _AddHeightScreenState extends State<AddHeightScreen> {
   int _selectedHeight = 170;
   final FixedExtentScrollController _controller = FixedExtentScrollController(
     initialItem: 40,
   ); // 130 + 40 = 170
+  bool _isLoading = false;
 
   final List<int> heightList = List.generate(121, (i) => 130 + i); // 130–250 cm
 
   Future<void> _submit() async {
+    setState(() => _isLoading = true);
     try {
       final user = await account.get();
       final userId = user.$id;
 
       final bioDataDocument = await databases.listDocuments(
         databaseId: databaseId,
-        collectionId: bioDataCollectionID,
+        collectionId: biodataCollectionId,
         queries: [
           Query.equal('user', userId),
           Query.select(['\$id']),
@@ -46,7 +73,7 @@ class _AddHeightScreenState extends State<AddHeightScreen> {
 
       await databases.updateDocument(
         databaseId: databaseId,
-        collectionId: bioDataCollectionID,
+        collectionId: biodataCollectionId,
         documentId: bioDataDocumentID,
         data: {'height': _selectedHeight},
       );
@@ -81,6 +108,8 @@ class _AddHeightScreenState extends State<AddHeightScreen> {
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -92,7 +121,13 @@ class _AddHeightScreenState extends State<AddHeightScreen> {
     return Scaffold(
       backgroundColor: const Color(0xfff7f7f7),
       appBar: AppBar(
-        title: const Text("Your Height"),
+        title: Text(
+          "Your Height",
+          style: TextStyle(
+            color: themeColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         backgroundColor: Colors.white,
         foregroundColor: themeColor,
         elevation: 0.5,
@@ -123,6 +158,7 @@ class _AddHeightScreenState extends State<AddHeightScreen> {
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.black.withOpacity(0.7),
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                   ],
@@ -213,7 +249,7 @@ class _AddHeightScreenState extends State<AddHeightScreen> {
                             width: double.infinity,
                             height: 56,
                             child: ElevatedButton(
-                              onPressed: _submit,
+                              onPressed: _isLoading ? null : _submit,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: accentColor,
                                 foregroundColor: Colors.white,
@@ -226,7 +262,17 @@ class _AddHeightScreenState extends State<AddHeightScreen> {
                                 ),
                                 elevation: 2,
                               ),
-                              child: const Text("Continue"),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: CircularProgressIndicator(
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
+                                      ),
+                                    )
+                                  : const Text("Continue"),
                             ),
                           ),
                           const SizedBox(height: 12),

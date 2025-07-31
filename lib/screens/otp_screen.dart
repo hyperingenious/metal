@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
 import '../appwrite/appwrite.dart';
 
-String databaseId = '685a90fa0009384c5189';
-String completedStatusCollectionID = '686777d300169b27b237';
-String usersCollectionID = '68616ecc00163ed41e57';
+// Import all IDs from .env using String.fromEnvironment
+const String databaseId = String.fromEnvironment('DATABASE_ID');
+const String completedStatusCollectionID = String.fromEnvironment('COMPLETION_STATUS_COLLECTIONID');
+const String usersCollectionID = String.fromEnvironment('USERS_COLLECTIONID');
 
 class OtpScreen extends StatefulWidget {
   final String phone;

@@ -1,8 +1,13 @@
-
 import 'package:appwrite/appwrite.dart';
 import 'package:flutter/material.dart';
-import 'package:metal/appwrite/appwrite.dart';
-import 'package:metal/screens/phone_input_screen.dart';
+import 'package:lushh/appwrite/appwrite.dart';
+import 'package:lushh/screens/phone_input_screen.dart';
+
+// Import Appwrite IDs from .env using String.fromEnvironment
+const String databaseId = String.fromEnvironment('DATABASE_ID');
+const String preferenceCollectionID = String.fromEnvironment(
+  'PREFERENCE_COLLECTIONID',
+);
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -32,10 +37,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Loading state
   bool _loading = true;
   bool _saving = false;
-
-  // Appwrite IDs
-  final String databaseId = '685a90fa0009384c5189';
-  final String preferenceCollectionID = '685ab0ab0009a8b2d795';
 
   @override
   void initState() {
@@ -91,9 +92,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _loading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to load settings: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to load settings: $e")));
     }
   }
 
@@ -155,9 +156,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _saving = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Settings saved!")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Settings saved!")));
     } on AppwriteException catch (e) {
       setState(() {
         _saving = false;
@@ -188,9 +189,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Logout failed")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Logout failed")));
     }
   }
 
@@ -222,7 +223,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Divider(color: Color(0xFFBFA2D9), height: 1, thickness: 1),
+                const Divider(
+                  color: Color(0xFFBFA2D9),
+                  height: 1,
+                  thickness: 1,
+                ),
                 Padding(
                   padding: const EdgeInsets.only(left: 20, right: 20, top: 32),
                   child: Row(
@@ -361,7 +366,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           overlayColor: accentColor.withOpacity(0.15),
                           trackHeight: 5,
                           thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 13),
+                            enabledThumbRadius: 13,
+                          ),
                         ),
                         child: Slider(
                           value: (_maxDistance ?? minDistance).toDouble(),
@@ -424,7 +430,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF3B2357), width: 1.5),
+                        side: const BorderSide(
+                          color: Color(0xFF3B2357),
+                          width: 1.5,
+                        ),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
