@@ -14,6 +14,9 @@ const String _userCollectionId = String.fromEnvironment('USERS_COLLECTIONID');
 const String _imagesCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
 const String _storageBucketId = String.fromEnvironment('STORAGE_BUCKETID');
 const String _projectId = String.fromEnvironment('PROJECT_ID');
+const String promptsCollectionId = String.fromEnvironment(
+  'PROMPTS_COLLECTIONID',
+);
 
 class ProfileEditScreen extends StatefulWidget {
   final String? initialName;
@@ -64,6 +67,235 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   String? _originalProfession;
   String? _originalBio;
 
+  String? _gender;
+  List<Map<String, dynamic>> _promptQuestions = [];
+  List<int?> _promptAnswers = List.filled(7, null); // Updated to 7 questions
+  bool _isPromptLoading = true;
+  String? _promptError;
+  String? _promptDocId; // To update the document if it exists
+
+  List<int?> _originalPromptAnswers = List.filled(
+    7,
+    null,
+  ); // 7 for max questions
+
+  // Add the complete question sets directly here
+  static final List<Map<String, dynamic>> _maleQuestions = [
+    {
+      'question': 'The quality I admire most in a relationship is…',
+      'options': [
+        'Mutual respect',
+        'Unconditional support',
+        'Shared laughter',
+        'Honesty and open communication',
+        'Trust and loyalty',
+        'A sense of adventure',
+        'The ability to grow together',
+        'Thoughtfulness',
+        'Emotional intelligence',
+        'Good communication',
+      ],
+    },
+    {
+      'question': 'I feel most connected when we are…',
+      'options': [
+        'Having a deep conversation over coffee',
+        'Laughing at something completely silly',
+        'Exploring a new place together',
+        'Cooking a meal as a team',
+        'Just being quiet and comfortable in each other\'s presence',
+        'Talking about our dreams and goals',
+        'Sharing our favorite music with each other',
+        'Debating a movie\'s plot for hours',
+        'Working on a project together',
+        'Talking on a long drive',
+      ],
+    },
+    {
+      'question': 'I\'m looking for a partner who can challenge me to…',
+      'options': [
+        'Step outside my comfort zone',
+        'Try new things',
+        'Think more deeply about things',
+        'Be more adventurous',
+        'Improve my communication skills',
+        'Be more emotionally intelligent',
+        'Read more books',
+        'Pursue my dreams',
+        'Be a better version of myself',
+      ],
+    },
+    {
+      'question': 'The most romantic thing I can do for someone is…',
+      'options': [
+        'Making them a home-cooked meal',
+        'Planning a surprise trip or adventure',
+        'Making them a cup of tea',
+        'Showing them I\'m listening by remembering the little things',
+        'Supporting them when they\'re pursuing a dream',
+        'Giving them a relaxing massage after a long day',
+        'Bringing them flowers just because',
+        'A romantic date',
+        'Sending a thoughtful text just to say I\'m thinking of them',
+        'Telling them how I feel',
+      ],
+    },
+    {
+      'question': 'The perfect gift I could receive is…',
+      'options': [
+        'A thoughtful, handwritten note',
+        'An experience, not a thing',
+        'Tickets to a sports game or a concert',
+        'Something that shows you were really listening',
+        'A surprise weekend trip',
+        'A great book',
+        'A great meal',
+        'Something to help me with my hobby',
+        'A day of no responsibilities',
+        'Anything handmade',
+      ],
+    },
+    {
+      'question': 'My ideal way to be comforted after a bad day is…',
+      'options': [
+        'A long, quiet walk',
+        'A hug and a quiet movie night',
+        'A great home-cooked meal',
+        'A little bit of space to myself',
+        'To talk it out with a good listener',
+        'A good workout',
+        'A surprise',
+        'A good beer',
+        'A long drive with some good music',
+        'A cup of tea',
+      ],
+    },
+    {
+      'question': 'A perfect Friday night looks like…',
+      'options': [
+        'A low-key dinner with friends',
+        'A great movie on the couch with some comfort food',
+        'Quality time with parents or siblings',
+        'Trying out a new restaurant or bar',
+        'Getting a good workout in after a long week',
+        'A board game night with a few close friends',
+        'Going to a live music show',
+        'An adventurous road trip to a new place',
+        'Grilling and chilling with a beer',
+        'Unplugging and enjoying some peace and quiet',
+        'A spontaneous trip to the mountains',
+      ],
+    },
+  ];
+
+  static final List<Map<String, dynamic>> _femaleQuestions = [
+    {
+      'question': 'I know I\'ve found a good match when…',
+      'options': [
+        'The conversation flows naturally',
+        'He makes me laugh',
+        'I feel a genuine connection',
+        'He\'s a good listener',
+        'We both forget to check our phones',
+        'He\'s a good friend',
+        'He challenges me to be a better person',
+        'We have the same sense of humor',
+        'He makes me feel safe',
+        'We have a mutual respect',
+      ],
+    },
+    {
+      'question': 'A quality I admire most on a date is…',
+      'options': [
+        'Their ability to listen',
+        'Their confidence',
+        'Their thoughtfulness',
+        'Their sense of humor',
+        'Their manners',
+        'Their ability to make me feel comfortable',
+        'Their respect for my time',
+        'Their ability to be present',
+        'Their kindness',
+        'Their honesty',
+      ],
+    },
+    {
+      'question': 'The best way to get to know me is…',
+      'options': [
+        'Over a good meal',
+        'By asking me about my passions',
+        'By having a deep conversation',
+        'By just letting me be myself',
+        'By seeing me with my friends',
+        'By sharing a new experience with me',
+        'Over a cup of tea',
+        'By asking me about my dreams',
+        'By just hanging out',
+        'By trying a new cafe',
+      ],
+    },
+    {
+      'question': 'My communication style is best described as…',
+      'options': [
+        'Direct and honest',
+        'I prefer to talk things out',
+        'I\'m a good listener',
+        'I\'m a good texter',
+        'I\'m a great communicator',
+        'I\'m a good listener, but I\'m also a great talker',
+        'I\'m a good texter, but I prefer to talk on the phone',
+        'I\'m a good communicator, but I\'m also a good listener',
+        'I\'m a good communicator, but I\'m also a good texter',
+        'I\'m a good communicator, but I also like to have fun',
+      ],
+    },
+    {
+      'question': 'My perfect first date would be…',
+      'options': [
+        'A long walk in a park',
+        'Coffee at a local cafe',
+        'Trying out a new restaurant or bar',
+        'A quiet dinner where we can talk',
+        'Getting an ice cream',
+        'An adventurous road trip to a new city',
+        'Bowling or mini golf',
+        'A comedy show',
+        'Going to a live music show',
+        'A picnic',
+      ],
+    },
+    {
+      'question': 'The most romantic gesture to me is…',
+      'options': [
+        'A thoughtful text after the date',
+        'A handwritten note',
+        'A surprise visit',
+        'A surprise trip',
+        'A home-cooked meal',
+        'A thoughtful gift',
+        'A long walk with a good conversation',
+        'A simple hug',
+        'A compliment',
+        'A great date',
+      ],
+    },
+    {
+      'question': 'My biggest pet peeve is…',
+      'options': [
+        'When someone is on their phone during a date',
+        'A messy car',
+        'Being late',
+        'Rude waiters',
+        'When someone chews with their mouth open',
+        'A person with no manners',
+        'When someone is a bad driver',
+        'A person who talks too much about themselves',
+        'Being ignored',
+        'When someone is a bad listener',
+      ],
+    },
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -91,6 +323,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     _bioController.addListener(_onProfileFieldChanged);
 
     _fetchProfileImagesAndBio();
+    _fetchPromptData();
   }
 
   void _onProfileFieldChanged() {
@@ -186,6 +419,82 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     }
   }
 
+  Future<void> _fetchPromptData() async {
+    setState(() {
+      _isPromptLoading = true;
+      _promptError = null;
+    });
+
+    try {
+      final user = await account.get();
+      final userId = user.$id;
+
+      // Fetch gender
+      final bioDataDoc = await databases.listDocuments(
+        databaseId: _databaseId,
+        collectionId: bioDataCollectionId,
+        queries: [
+          Query.equal('user', userId),
+          Query.select(['gender']),
+        ],
+      );
+      if (bioDataDoc.documents.isEmpty) {
+        setState(() {
+          _promptError = "Could not determine gender.";
+          _isPromptLoading = false;
+        });
+        return;
+      }
+      _gender = bioDataDoc.documents[0].data['gender']
+          ?.toString()
+          ?.toLowerCase();
+      if (_gender == 'male') {
+        _promptQuestions = _maleQuestions;
+      } else if (_gender == 'female') {
+        _promptQuestions = _femaleQuestions;
+      } else {
+        setState(() {
+          _promptError = "Gender not set.";
+          _isPromptLoading = false;
+        });
+        return;
+      }
+
+      // Fetch existing answers
+      final promptDocs = await databases.listDocuments(
+        databaseId: _databaseId,
+        collectionId: promptsCollectionId,
+        queries: [Query.equal('user', userId)],
+      );
+      if (promptDocs.documents.isNotEmpty) {
+        final data = promptDocs.documents[0].data;
+        _promptDocId = promptDocs.documents[0].$id;
+        for (int i = 0; i < 7; i++) {
+          // Updated to 7 questions
+          final answer = data['answer_${i + 1}'];
+          if (answer != null) {
+            final options = _promptQuestions[i]['options'] as List<String>;
+            final idx = options.indexOf(answer);
+            _promptAnswers[i] = idx >= 0 ? idx : null;
+          }
+        }
+        // Store original answers for change detection
+        _originalPromptAnswers = List<int?>.from(_promptAnswers);
+      } else {
+        // If no answers, also reset original
+        _originalPromptAnswers = List<int?>.from(_promptAnswers);
+      }
+      setState(() {
+        _isPromptLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _promptError = "Failed to load prompts.";
+        _isPromptLoading = false;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _nameController.removeListener(_onProfileFieldChanged);
@@ -227,7 +536,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         Map<String, dynamic> updateData = {};
 
         // Swap in local list
-        setState(() {
+      setState(() {
           final temp = _images[0];
           _images[0] = _images[index];
           _images[index] = temp;
@@ -255,7 +564,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         );
       } else {
         // No document found, just swap locally
-        setState(() {
+      setState(() {
           final temp = _images[0];
           _images[0] = _images[index];
           _images[index] = temp;
@@ -263,15 +572,15 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         });
       }
     } on AppwriteException catch (e) {
-      setState(() {
+                                  setState(() {
         _errorMessage = e.message ?? "Failed to set as main photo.";
       });
     } catch (e) {
-      setState(() {
+                          setState(() {
         _errorMessage = "Failed to set as main photo.";
       });
     } finally {
-      setState(() {
+                                        setState(() {
         _isLoading = false;
       });
     }
@@ -313,22 +622,22 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           'https://fra.cloud.appwrite.io/v1/storage/buckets/$_storageBucketId/files/${storageFile.$id}/view?project=$_projectId&mode=admin';
 
       // Find the user's image document in the images collection
-      final imageDocs = await databases.listDocuments(
-        databaseId: _databaseId,
-        collectionId: _imagesCollectionId,
-        queries: [Query.equal('user', currentUserId)],
-      );
+        final imageDocs = await databases.listDocuments(
+          databaseId: _databaseId,
+          collectionId: _imagesCollectionId,
+          queries: [Query.equal('user', currentUserId)],
+        );
 
       String imageField = 'image_${index + 1}';
 
-      if (imageDocs.documents.isNotEmpty) {
+        if (imageDocs.documents.isNotEmpty) {
         // Update the existing document
         final docId = imageDocs.documents.first.$id;
         final Map<String, dynamic> updateData = {};
         updateData[imageField] = fileUrl;
 
         await databases.updateDocument(
-          databaseId: _databaseId,
+        databaseId: _databaseId,
           collectionId: _imagesCollectionId,
           documentId: docId,
           data: updateData,
@@ -378,14 +687,14 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         final isMain = index == 0;
         final hasImage = _images[index].isNotEmpty;
         return SafeArea(
-          child: Column(
+                  child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [
+                    children: [
               if (hasImage && !isMain)
                 ListTile(
                   leading: const Icon(Icons.star, color: Color(0xFF7B4AE2)),
                   title: const Text('Set as Main Photo'),
-                  onTap: () async {
+                              onTap: () async {
                     Navigator.pop(context);
                     await _setAsMainPhoto(index);
                   },
@@ -413,15 +722,15 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   onTap: isMain
                       ? null
                       : () async {
-                          setState(() {
+    setState(() {
                             _images[index] = '';
-                          });
+    });
                           // Also update Appwrite image collection
-                          try {
-                            final user = await account.get();
+    try {
+      final user = await account.get();
                             final String currentUserId = user.$id;
                             final imageDocs = await databases.listDocuments(
-                              databaseId: _databaseId,
+        databaseId: _databaseId,
                               collectionId: _imagesCollectionId,
                               queries: [Query.equal('user', currentUserId)],
                             );
@@ -430,7 +739,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                               final docId = imageDocs.documents.first.$id;
                               // Set the field to null for deletion
                               await databases.updateDocument(
-                                databaseId: _databaseId,
+        databaseId: _databaseId,
                                 collectionId: _imagesCollectionId,
                                 documentId: docId,
                                 data: {imageField: null},
@@ -465,7 +774,17 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     final professionChanged =
         (_selectedProfession != (_originalProfession ?? _professions.first));
     final bioChanged = (_bioController.text.trim() != (_originalBio ?? ''));
-    return nameChanged || professionChanged || bioChanged;
+    final promptChanged = !_listEquals(_promptAnswers, _originalPromptAnswers);
+    return nameChanged || professionChanged || bioChanged || promptChanged;
+  }
+
+  // Helper for deep list equality
+  bool _listEquals(List<int?> a, List<int?> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   // The function to be called on save (to be implemented by you)
@@ -484,17 +803,21 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       final professionChanged =
           (_selectedProfession != (_originalProfession ?? _professions.first));
       final bioChanged = (_bioController.text.trim() != (_originalBio ?? ''));
+      final promptChanged = !_listEquals(
+        _promptAnswers,
+        _originalPromptAnswers,
+      );
 
       bool updated = false;
 
       // Update name in user collection if changed
       if (nameChanged) {
-        await databases.updateDocument(
-          databaseId: _databaseId,
-          collectionId: _userCollectionId,
+      await databases.updateDocument(
+        databaseId: _databaseId,
+        collectionId: _userCollectionId,
           documentId: userId,
           data: {'name': _nameController.text.trim()},
-        );
+      );
         setState(() {
           _originalName = _nameController.text.trim();
         });
@@ -504,8 +827,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       // Update profession and/or bio in biodata collection if changed
       if (professionChanged || bioChanged) {
         final biodDataDocument = await databases.listDocuments(
-          databaseId: _databaseId,
-          collectionId: bioDataCollectionId,
+        databaseId: _databaseId,
+        collectionId: bioDataCollectionId,
           queries: [Query.equal('user', userId)],
         );
         if (biodDataDocument.documents.isNotEmpty) {
@@ -518,28 +841,61 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           if (bioChanged) {
             updateData['bio'] = _bioController.text.trim();
           }
-          await databases.updateDocument(
-            databaseId: _databaseId,
-            collectionId: bioDataCollectionId,
+        await databases.updateDocument(
+          databaseId: _databaseId,
+          collectionId: bioDataCollectionId,
             documentId: biodDataDocument.documents[0].$id,
             data: updateData,
           );
-          setState(() {
+        setState(() {
             if (professionChanged) _originalProfession = _selectedProfession;
             if (bioChanged) _originalBio = _bioController.text.trim();
           });
           updated = true;
-        } else {
-          setState(() {
+      } else {
+        setState(() {
             _errorMessage = "Profile data not found.";
           });
           return false;
         }
       }
 
+      // Save prompts if changed
+      if (promptChanged) {
+        Map<String, dynamic> promptData = {'user': userId};
+        for (int i = 0; i < 7; i++) {
+          final idx = _promptAnswers[i];
+          final options = _promptQuestions[i]['options'] as List<String>;
+            promptData['answer_${i + 1}'] =
+              (idx != null && idx >= 0 && idx < options.length)
+              ? options[idx]
+              : null;
+          }
+
+        if (_promptDocId != null) {
+        await databases.updateDocument(
+          databaseId: _databaseId,
+        collectionId: promptsCollectionId,
+            documentId: _promptDocId!,
+            data: promptData,
+          );
+      } else {
+          await databases.createDocument(
+            databaseId: _databaseId,
+            collectionId: promptsCollectionId,
+            documentId: ID.unique(),
+            data: promptData,
+          );
+      }
+      setState(() {
+        _originalPromptAnswers = List<int?>.from(_promptAnswers);
+        });
+        updated = true;
+      }
+
       // If nothing was updated, show a message (optional)
-      if (!nameChanged && !professionChanged && !bioChanged) {
-        setState(() {
+      if (!nameChanged && !professionChanged && !bioChanged && !promptChanged) {
+      setState(() {
           _errorMessage = "No changes to save.";
         });
         return false;
@@ -575,7 +931,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         );
         return true; // Return true for successful save
       }
-      
+
       return false;
     } on AppwriteException catch (e) {
       setState(() {
@@ -590,6 +946,61 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     } finally {
       setState(() {
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _savePromptAnswers() async {
+    setState(() {
+      _isPromptLoading = true;
+      _promptError = null;
+    });
+
+    try {
+      final user = await account.get();
+      final userId = user.$id;
+
+      Map<String, dynamic> data = {'user': userId};
+      for (int i = 0; i < 7; i++) {
+        // Updated to 7 questions
+        final idx = _promptAnswers[i];
+          final options = _promptQuestions[i]['options'] as List<String>;
+        data['answer_${i + 1}'] =
+            (idx != null && idx >= 0 && idx < options.length)
+            ? options[idx]
+            : null;
+      }
+
+      if (_promptDocId != null) {
+        await databases.updateDocument(
+          databaseId: _databaseId,
+          collectionId: promptsCollectionId,
+          documentId: _promptDocId!,
+          data: data,
+        );
+      } else {
+        await databases.createDocument(
+          databaseId: _databaseId,
+          collectionId: promptsCollectionId,
+          documentId: ID.unique(),
+          data: data,
+        );
+      }
+
+      setState(() {
+        _isPromptLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Prompts updated!"),
+          backgroundColor: const Color(0xFFF8EBF9),
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _promptError = "Failed to save prompts.";
+        _isPromptLoading = false;
       });
     }
   }
@@ -648,7 +1059,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.w600,
-                    fontSize: 15,
+                    fontSize: 12,
                     color: Colors.white,
                   ),
                 ),
@@ -663,12 +1074,12 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
-                child: Column(
+                  child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
+                    children: [
                     Icon(Icons.error_outline, color: Colors.red[300], size: 48),
                     const SizedBox(height: 16),
-                    Text(
+                      Text(
                       _errorMessage!,
                       style: const TextStyle(
                         color: Color(0xFF3B2357),
@@ -686,11 +1097,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 ),
               ),
             )
-          : SingleChildScrollView(
+              : SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 0),
-                child: Column(
-                  children: [
+                  child: Column(
+                    children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -745,7 +1156,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                               left: 18,
                               right: 60,
                               child: TextField(
-                                controller: _nameController,
+                        controller: _nameController,
                                 style: const TextStyle(
                                   fontFamily: 'Poppins',
                                   fontSize: 20,
@@ -759,7 +1170,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                     ),
                                   ],
                                 ),
-                                decoration: InputDecoration(
+                        decoration: InputDecoration(
                                   hintText: 'Your Name',
                                   hintStyle: TextStyle(
                                     color: Colors.white.withOpacity(0.7),
@@ -819,9 +1230,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                         size: 16,
                                       ),
                                       SizedBox(width: 4),
-                                      Text(
+                      Text(
                                         "Main Photo",
-                                        style: TextStyle(
+                        style: TextStyle(
                                           color: Color(0xFF7B4AE2),
                                           fontWeight: FontWeight.w600,
                                           fontFamily: 'Poppins',
@@ -862,22 +1273,22 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                     crossAxisSpacing: spacing,
                                     childAspectRatio: itemWidth / itemHeight,
                                   ),
-                              itemCount: 6,
-                              itemBuilder: (context, index) {
+                          itemCount: 6,
+                          itemBuilder: (context, index) {
                                 final isHighlighted =
                                     index == _highlightedIndex;
                                 final hasImage =
                                     _images.isNotEmpty &&
                                     _images[index].isNotEmpty;
-                                return GestureDetector(
+                            return GestureDetector(
                                   onTap: () {
                                     _showImageActions(index);
                                   },
                                   child: Stack(
                                     children: [
                                       Container(
-                                        decoration: BoxDecoration(
-                                          border: Border.all(
+                                decoration: BoxDecoration(
+                                  border: Border.all(
                                             color: isHighlighted
                                                 ? const Color(0xFF7B4AE2)
                                                 : Colors.transparent,
@@ -894,7 +1305,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                           child: hasImage
                                               ? Image.network(
                                                   _images[index],
-                                                  fit: BoxFit.cover,
+                                        fit: BoxFit.cover,
                                                   width: itemWidth,
                                                   height: itemHeight,
                                                   errorBuilder:
@@ -906,9 +1317,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                                         color: Colors.grey[300],
                                                         child: const Icon(
                                                           Icons.broken_image,
-                                                          color: Colors.grey,
-                                                        ),
-                                                      ),
+                                        color: Colors.grey,
+                                      ),
+                                ),
                                                 )
                                               : Container(
                                                   width: itemWidth,
@@ -921,10 +1332,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                                       PhosphorIconsRegular.plus,
                                                       color: Color(0xFF7B4AE2),
                                                       size: 22,
-                                                    ),
-                                                  ),
-                                                ),
-                                        ),
+                            ),
+                          ),
+                        ),
+                      ),
                                       ),
                                       // Main badge for highlighted image (not slot 0)
                                       if (isHighlighted &&
@@ -954,9 +1365,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                                   size: 13,
                                                 ),
                                                 SizedBox(width: 3),
-                                                Text(
+                      Text(
                                                   "Main",
-                                                  style: TextStyle(
+                        style: TextStyle(
                                                     color: Color(0xFF7B4AE2),
                                                     fontWeight: FontWeight.w600,
                                                     fontFamily: 'Poppins',
@@ -1005,10 +1416,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                           ),
                                         ),
                                     ],
-                                  ),
-                                );
-                              },
-                            ),
+                              ),
+                            );
+                          },
+                        ),
                           );
                         },
                       ),
@@ -1031,9 +1442,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                      const Text(
                                 "Profession",
-                                style: TextStyle(
+                        style: TextStyle(
                                   fontFamily: 'Poppins',
                                   fontWeight: FontWeight.w600,
                                   fontSize: 16,
@@ -1041,12 +1452,12 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              DropdownButtonFormField<String>(
-                                value: _selectedProfession,
+                      DropdownButtonFormField<String>(
+                        value: _selectedProfession,
                                 items: _professions
                                     .map(
                                       (profession) => DropdownMenuItem<String>(
-                                        value: profession,
+                            value: profession,
                                         child: Text(
                                           profession,
                                           style: const TextStyle(
@@ -1058,12 +1469,12 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                       ),
                                     )
                                     .toList(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedProfession = value;
-                                  });
-                                },
-                                decoration: InputDecoration(
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedProfession = value;
+                          });
+                        },
+                        decoration: InputDecoration(
                                   contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 12,
                                     vertical: 8,
@@ -1083,9 +1494,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              TextField(
-                                controller: _professionNameController,
-                                decoration: InputDecoration(
+                      TextField(
+                        controller: _professionNameController,
+                        decoration: InputDecoration(
                                   labelText: "Profession Name",
                                   labelStyle: const TextStyle(
                                     fontFamily: 'Poppins',
@@ -1102,9 +1513,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                 ),
                               ),
                               const SizedBox(height: 20),
-                              const Text(
+                      const Text(
                                 "Bio",
-                                style: TextStyle(
+                        style: TextStyle(
                                   fontFamily: 'Poppins',
                                   fontWeight: FontWeight.w600,
                                   fontSize: 16,
@@ -1112,11 +1523,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              TextField(
-                                controller: _bioController,
+                      TextField(
+                        controller: _bioController,
                                 maxLength: 150,
                                 maxLines: 3,
-                                decoration: InputDecoration(
+                        decoration: InputDecoration(
                                   labelText: "Tell us about yourself",
                                   labelStyle: const TextStyle(
                                     fontFamily: 'Poppins',
@@ -1143,12 +1554,139 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
+                      if (_isPromptLoading)
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                      else if (_promptError != null)
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          _promptError!,
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      )
+                    else
+                      Card(
+                        color: Colors.white,
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(18.0),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                              const Text(
+                                "Edit Prompts",
+                                  style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                  color: Color(0xFF3B2357),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              for (int i = 0; i < _promptQuestions.length; i++)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: 32.0,
+                                  ), // Increased padding
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                        _promptQuestions[i]['question'],
+                                  style: const TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontWeight:
+                                              FontWeight.w700, // Made bolder
+                                          fontSize: 28, // Much bigger font size
+                                          color: Color(0xFF7B4AE2),
+                                          height:
+                                              1.3, // Better line height for readability<Widget>
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        height: 16,
+                                      ), // Increased spacingll;
+                                Wrap(
+                                        spacing:
+                                            10, // Slightly more spacing between chips
+                                        runSpacing: 10,
+                                        children: List<Widget>.generate(
+                                          (_promptQuestions[i]['options']
+                                                  as List<String>)
+                                              .length,
+                                          (idx) => ChoiceChip(
+                                      label: Text(
+                                              _promptQuestions[i]['options'][idx],
+                                        style: TextStyle(
+                                                fontFamily: 'Poppins',
+                                                fontSize:
+                                                    13, // Bigger option text
+                                                color: _promptAnswers[i] == idx
+                                              ? Colors.white
+                                                    : const Color(0xFF3B2357),
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            selected: _promptAnswers[i] == idx,
+                                      onSelected: (selected) {
+                                        setState(() {
+                                                _promptAnswers[i] = selected
+                                                    ? idx
+                                                    : null;
+                                        });
+                                        _onProfileFieldChanged();
+                                      },
+                                            selectedColor: const Color(
+                                              0xFF7B4AE2,
+                                            ),
+                                            backgroundColor: const Color(
+                                              0xFFF8EBF9,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    20,
+                                                  ), // Slightly more rounded
+                                              side: BorderSide(
+                                                color: _promptAnswers[i] == idx
+                                                    ? const Color(0xFF7B4AE2)
+                                                    : Colors.transparent,
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal:
+                                                  16, // More horizontal padding
+                                              vertical:
+                                                  12, // More vertical padding
+                                            ),
+                                            elevation: _promptAnswers[i] == idx
+                                                ? 3
+                                                : 0, // Slightly more elevation
+                                          ),
+                                        ),
+                                      ),
+                              ],
+                            ),
+                          ),
+                            ],
+                        ),
+                        ),
+                                ),
+                                const SizedBox(height: 32),
                     // Save Changes button removed from here
                     // const SizedBox(height: 32),
-                  ],
+                    ],
                 ),
-              ),
-            ),
+                  ),
+                ),
     );
   }
 }

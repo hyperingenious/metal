@@ -8,6 +8,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:lushh/appwrite/appwrite.dart';
+import 'package:lushh/screens/profile_completion/isAnsweredAllQuestionsScreen.dart';
 
 // Import all ids from .env using String.fromEnvironment
 const String databaseId = String.fromEnvironment('DATABASE_ID');
@@ -446,11 +447,16 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
             databaseId: databaseId,
             collectionId: completionStatusCollectionId,
             documentId: documentId,
-            data: {'isLocationAdded': true, 'isAllCompleted': true},
+            data: {'isLocationAdded': true,},
           );
         }
 
-        Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const IsAnsweredAllQuestionsScreen(),
+          ),
+        );
       } on AppwriteException catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -502,7 +508,7 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
             databaseId: databaseId,
             collectionId: completionStatusCollectionId,
             documentId: documentId,
-            data: {'isLocationAdded': true, 'isAllCompleted': true},
+            data: {'isLocationAdded': true,},
           );
         } on AppwriteException catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(

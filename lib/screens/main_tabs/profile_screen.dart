@@ -7,6 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 
+// Add prompts collection ID
+const String promptsCollectionId = String.fromEnvironment('PROMPTS_COLLECTIONID');
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -37,6 +40,228 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // For cache
   static const String _profileCacheKey = 'profile_cache_v1';
+
+  // Prompts data
+  List<Map<String, dynamic>> _promptAnswers = [];
+  bool _isPromptsLoading = false;
+  String? _promptsError;
+
+  // Questions data
+  final List<Map<String, dynamic>> _maleQuestions = [
+    {
+      'question': 'The quality I admire most in a relationship is…',
+      'options': [
+        'Mutual respect',
+        'Unconditional support',
+        'Shared laughter',
+        'Honesty and open communication',
+        'Trust and loyalty',
+        'A sense of adventure',
+        'The ability to grow together',
+        'Thoughtfulness',
+        'Emotional intelligence',
+        'Good communication',
+      ],
+    },
+    {
+      'question': 'I feel most connected when we are…',
+      'options': [
+        'Having a deep conversation over coffee',
+        'Laughing at something completely silly',
+        'Exploring a new place together',
+        'Cooking a meal as a team',
+        'Just being quiet and comfortable in each other\'s presence',
+        'Talking about our dreams and goals',
+        'Sharing our favorite music with each other',
+        'Debating a movie\'s plot for hours',
+        'Working on a project together',
+        'Talking on a long drive',
+      ],
+    },
+    {
+      'question': 'I\'m looking for a partner who can challenge me to…',
+      'options': [
+        'Step outside my comfort zone',
+        'Try new things',
+        'Think more deeply about things',
+        'Be more adventurous',
+        'Improve my communication skills',
+        'Be more emotionally intelligent',
+        'Read more books',
+        'Pursue my dreams',
+        'Be a better version of myself',
+      ],
+    },
+    {
+      'question': 'The most romantic thing I can do for someone is…',
+      'options': [
+        'Making them a home-cooked meal',
+        'Planning a surprise trip or adventure',
+        'Making them a cup of tea',
+        'Showing them I\'m listening by remembering the little things',
+        'Supporting them when they\'re pursuing a dream',
+        'Giving them a relaxing massage after a long day',
+        'Bringing them flowers just because',
+        'A romantic date',
+        'Sending a thoughtful text just to say I\'m thinking of them',
+        'Telling them how I feel',
+      ],
+    },
+    {
+      'question': 'The perfect gift I could receive is…',
+      'options': [
+        'A thoughtful, handwritten note',
+        'An experience, not a thing',
+        'Tickets to a sports game or a concert',
+        'Something that shows you were really listening',
+        'A surprise weekend trip',
+        'A great book',
+        'A great meal',
+        'Something to help me with my hobby',
+        'A day of no responsibilities',
+        'Anything handmade',
+      ],
+    },
+    {
+      'question': 'My ideal way to be comforted after a bad day is…',
+      'options': [
+        'A long, quiet walk',
+        'A hug and a quiet movie night',
+        'A great home-cooked meal',
+        'A little bit of space to myself',
+        'To talk it out with a good listener',
+        'A good workout',
+        'A surprise',
+        'A good beer',
+        'A long drive with some good music',
+        'A cup of tea',
+      ],
+    },
+    {
+      'question': 'A perfect Friday night looks like…',
+      'options': [
+        'A low-key dinner with friends',
+        'A great movie on the couch with some comfort food',
+        'Quality time with parents or siblings',
+        'Trying out a new restaurant or bar',
+        'Getting a good workout in after a long week',
+        'A board game night with a few close friends',
+        'Going to a live music show',
+        'An adventurous road trip to a new place',
+        'Grilling and chilling with a beer',
+        'Unplugging and enjoying some peace and quiet',
+        'A spontaneous trip to the mountains',
+      ],
+    },
+  ];
+
+  final List<Map<String, dynamic>> _femaleQuestions = [
+    {
+      'question': 'I know I\'ve found a good match when…',
+      'options': [
+        'The conversation flows naturally',
+        'He makes me laugh',
+        'I feel a genuine connection',
+        'He\'s a good listener',
+        'We both forget to check our phones',
+        'He\'s a good friend',
+        'He challenges me to be a better person',
+        'We have the same sense of humor',
+        'He makes me feel safe',
+        'We have a mutual respect',
+      ],
+    },
+    {
+      'question': 'A quality I admire most on a date is…',
+      'options': [
+        'Their ability to listen',
+        'Their confidence',
+        'Their thoughtfulness',
+        'Their sense of humor',
+        'Their manners',
+        'Their ability to make me feel comfortable',
+        'Their respect for my time',
+        'Their ability to be present',
+        'Their kindness',
+        'Their honesty',
+      ],
+    },
+    {
+      'question': 'The best way to get to know me is…',
+      'options': [
+        'Over a good meal',
+        'By asking me about my passions',
+        'By having a deep conversation',
+        'By just letting me be myself',
+        'By seeing me with my friends',
+        'By sharing a new experience with me',
+        'Over a cup of tea',
+        'By asking me about my dreams',
+        'By just hanging out',
+        'By trying a new cafe',
+      ],
+    },
+    {
+      'question': 'My communication style is best described as…',
+      'options': [
+        'Direct and honest',
+        'I prefer to talk things out',
+        'I\'m a good listener',
+        'I\'m a good texter',
+        'I\'m a great communicator',
+        'I\'m a good listener, but I\'m also a great talker',
+        'I\'m a good texter, but I prefer to talk on the phone',
+        'I\'m a good communicator, but I\'m also a good listener',
+        'I\'m a good communicator, but I\'m also a good texter',
+        'I\'m a good communicator, but I also like to have fun',
+      ],
+    },
+    {
+      'question': 'My perfect first date would be…',
+      'options': [
+        'A long walk in a park',
+        'Coffee at a local cafe',
+        'Trying out a new restaurant or bar',
+        'A quiet dinner where we can talk',
+        'Getting an ice cream',
+        'An adventurous road trip to a new city',
+        'Bowling or mini golf',
+        'A comedy show',
+        'Going to a live music show',
+        'A picnic',
+      ],
+    },
+    {
+      'question': 'The most romantic gesture to me is…',
+      'options': [
+        'A thoughtful text after the date',
+        'A handwritten note',
+        'A surprise visit',
+        'A surprise trip',
+        'A home-cooked meal',
+        'A thoughtful gift',
+        'A long walk with a good conversation',
+        'A simple hug',
+        'A compliment',
+        'A great date',
+      ],
+    },
+    {
+      'question': 'My biggest pet peeve is…',
+      'options': [
+        'When someone is on their phone during a date',
+        'A messy car',
+        'Being late',
+        'Rude waiters',
+        'When someone chews with their mouth open',
+        'A person with no manners',
+        'When someone is a bad driver',
+        'A person who talks too much about themselves',
+        'Being ignored',
+        'When someone is a bad listener',
+      ],
+    },
+  ];
 
   @override
   void initState() {
@@ -85,6 +310,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _saveProfileToCache(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_profileCacheKey, json.encode(data));
+  }
+
+  Future<void> _fetchPromptsData() async {
+    if (userId == null || gender == null) return;
+
+    setState(() {
+      _isPromptsLoading = true;
+      _promptsError = null;
+    });
+
+    try {
+      final promptDocs = await databases.listDocuments(
+        databaseId: databaseId, // This is now correctly imported from appwrite.dart
+        collectionId: promptsCollectionId,
+        queries: [Query.equal('user', userId!)],
+      );
+
+      List<Map<String, dynamic>> answers = [];
+      if (promptDocs.documents.isNotEmpty) {
+        final data = promptDocs.documents[0].data;
+        final questions = gender!.toLowerCase() == 'male' ? _maleQuestions : _femaleQuestions;
+        
+        for (int i = 0; i < 7; i++) {
+          final answer = data['answer_${i + 1}'];
+          if (answer != null && answer.toString().isNotEmpty) {
+            answers.add({
+              'question': questions[i]['question'],
+              'answer': answer.toString(),
+            });
+          }
+        }
+      }
+
+      setState(() {
+        _promptAnswers = answers;
+        _isPromptsLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _promptsError = "Failed to load prompts.";
+        _isPromptsLoading = false;
+      });
+    }
   }
 
   Future<void> _fetchProfileData() async {
@@ -248,12 +516,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           errorMessage = null;
           debugError = null;
         });
+        
+        // Fetch prompts data after profile data is loaded
+        await _fetchPromptsData();
       } else {
         setState(() {
           isLoading = false;
           errorMessage = null;
           debugError = null;
         });
+        
+        // Still fetch prompts data even if profile didn't change
+        await _fetchPromptsData();
       }
     } on AppwriteException catch (e) {
       setState(() {
@@ -841,6 +1115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                     ],
+                    
                     const SizedBox(height: 24),
                     // Additional Images Section (imitate explore)
                     if (images.length > 1)
@@ -886,6 +1161,87 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           }),
                         ],
                       ),
+                    
+                    // Prompts Section - moved to end
+                    if (_promptAnswers.isNotEmpty) ...[
+                      const SizedBox(height: 32),
+                      const Align(
+                        alignment: Alignment.center,
+                        child: Text(
+                          "My Prompts",
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                            color: Color(0xFF3B2357),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ..._promptAnswers.map((prompt) => Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.06),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                          border: Border.all(
+                            color: const Color(0xFFE8E0F0),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              prompt['question'],
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                color: Color(0xFF6D4B86),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              prompt['answer'],
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 20,
+                                color: Color(0xFF3B2357),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )).toList(),
+                    ] else if (_isPromptsLoading) ...[
+                      const SizedBox(height: 32),
+                      const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8B4DFF)),
+                        ),
+                      ),
+                    ] else if (_promptsError != null) ...[
+                      const SizedBox(height: 32),
+                      Center(
+                        child: Text(
+                          _promptsError!,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            color: Colors.red,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -6,7 +6,6 @@ import 'package:lushh/screens/phone_input_screen.dart';
 import 'package:lushh/screens/profile_completion/profile_completion_router.dart';
 import 'package:lushh/screens/settings_screen.dart';
 
-
 void main() {
   runApp(const MyApp());
 }
@@ -19,7 +18,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Appwrite Phone Auth',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.deepPurple),
+      theme: ThemeData(
+        primarySwatch: Colors.deepPurple,
+        scaffoldBackgroundColor: const Color(
+          0xFFFAFAFA,
+        ), // Very light background for entire app
+      ),
       initialRoute: '/',
       onGenerateRoute: (RouteSettings settings) {
         return MaterialPageRoute(

@@ -9,6 +9,7 @@ import 'package:lushh/screens/profile_completion/screen_5.dart';
 import 'package:lushh/screens/profile_completion/screen_6.dart';
 import 'package:lushh/screens/profile_completion/screen_7.dart';
 import 'package:lushh/screens/profile_completion/screen_8.dart';
+import 'package:lushh/screens/profile_completion/isAnsweredAllQuestionsScreen.dart';
 
 // Import all IDs from environment using String.fromEnvironment
 const appwriteDevKey = String.fromEnvironment('APPWRITE_DEV_KEY');
@@ -108,6 +109,9 @@ class _ProfileCompletionRouterState extends State<ProfileCompletionRouter> {
       final isLocationAdded =
           completionDocument.data['isLocationAdded'] as bool? ?? false;
 
+      final isAnsweredQuestions=
+          completionDocument.data['isAnsweredQuestions'] as bool? ?? false;
+
       if (isAddedDOBAndName == false) {
         Navigator.pushReplacement(
           context,
@@ -149,6 +153,12 @@ class _ProfileCompletionRouterState extends State<ProfileCompletionRouter> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => AddLocationScreen()),
+        );
+      }
+ else if (isAnsweredQuestions == false) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => IsAnsweredAllQuestionsScreen()),
         );
       }
     } on AppwriteException catch (e) {

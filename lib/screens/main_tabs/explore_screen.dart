@@ -13,9 +13,228 @@ import 'package:url_launcher/url_launcher.dart';
 
 // Environment variables for collections
 const databaseId = String.fromEnvironment('DATABASE_ID');
-const connectionsCollectionId = String.fromEnvironment('CONNECTIONS_COLLECTIONID');
+const connectionsCollectionId = String.fromEnvironment(
+  'CONNECTIONS_COLLECTIONID',
+);
 const locationCollectionId = String.fromEnvironment('LOCATION_COLLECTIONID');
 const updateNowCollectionId = String.fromEnvironment('UPDATE_NOW_COLLECTIONID');
+
+// Questions for prompts based on gender
+final List<Map<String, dynamic>> _femaleQuestions = [
+  {
+    'question': 'I know I\'ve found a good match when…',
+    'options': [
+      'The conversation flows naturally',
+      'He makes me laugh',
+      'I feel a genuine connection',
+      'He\'s a good listener',
+      'We both forget to check our phones',
+      'He\'s a good friend',
+      'He challenges me to be a better person',
+      'We have the same sense of humor',
+      'He makes me feel safe',
+      'We have a mutual respect',
+    ],
+  },
+  {
+    'question': 'A quality I admire most on a date is…',
+    'options': [
+      'Their ability to listen',
+      'Their confidence',
+      'Their thoughtfulness',
+      'Their sense of humor',
+      'Their manners',
+      'Their ability to make me feel comfortable',
+      'Their respect for my time',
+      'Their ability to be present',
+      'Their kindness',
+      'Their honesty',
+    ],
+  },
+  {
+    'question': 'The best way to get to know me is…',
+    'options': [
+      'Over a good meal',
+      'By asking me about my passions',
+      'By having a deep conversation',
+      'By just letting me be myself',
+      'By seeing me with my friends',
+      'By sharing a new experience with me',
+      'Over a cup of tea',
+      'By asking me about my dreams',
+      'By just hanging out',
+      'By trying a new cafe',
+    ],
+  },
+  {
+    'question': 'My communication style is best described as…',
+    'options': [
+      'Direct and honest',
+      'I prefer to talk things out',
+      'I\'m a good listener',
+      'I\'m a good texter',
+      'I\'m a great communicator',
+      'I\'m a good listener, but I\'m also a great talker',
+      'I\'m a good texter, but I prefer to talk on the phone',
+      'I\'m a good communicator, but I\'m also a good listener',
+      'I\'m a good communicator, but I\'m also a good texter',
+      'I\'m a good communicator, but I also like to have fun',
+    ],
+  },
+  {
+    'question': 'My perfect first date would be…',
+    'options': [
+      'A long walk in a park',
+      'Coffee at a local cafe',
+      'Trying out a new restaurant or bar',
+      'A quiet dinner where we can talk',
+      'Getting an ice cream',
+      'An adventurous road trip to a new city',
+      'Bowling or mini golf',
+      'A comedy show',
+      'Going to a live music show',
+      'A picnic',
+    ],
+  },
+  {
+    'question': 'The most romantic gesture to me is…',
+    'options': [
+      'A thoughtful text after the date',
+      'A handwritten note',
+      'A surprise visit',
+      'A surprise trip',
+      'A home-cooked meal',
+      'A thoughtful gift',
+      'A long walk with a good conversation',
+      'A simple hug',
+      'A compliment',
+      'A great date',
+    ],
+  },
+  {
+    'question': 'My biggest pet peeve is…',
+    'options': [
+      'When someone is on their phone during a date',
+      'A messy car',
+      'Being late',
+      'Rude waiters',
+      'When someone chews with their mouth open',
+      'A person with no manners',
+      'When someone is a bad driver',
+      'A person who talks too much about themselves',
+      'Being ignored',
+      'When someone is a bad listener',
+    ],
+  },
+];
+
+final List<Map<String, dynamic>> _maleQuestions = [
+  {
+    'question': 'The quality I admire most in a relationship is…',
+    'options': [
+      'Mutual respect',
+      'Unconditional support',
+      'Shared laughter',
+      'Honesty and open communication',
+      'Trust and loyalty',
+      'A sense of adventure',
+      'The ability to grow together',
+      'Thoughtfulness',
+      'Emotional intelligence',
+      'Good communication',
+    ],
+  },
+  {
+    'question': 'I feel most connected when we are…',
+    'options': [
+      'Having a deep conversation over coffee',
+      'Laughing at something completely silly',
+      'Exploring a new place together',
+      'Cooking a meal as a team',
+      'Just being quiet and comfortable in each other\'s presence',
+      'Talking about our dreams and goals',
+      'Sharing our favorite music with each other',
+      'Debating a movie\'s plot for hours',
+      'Working on a project together',
+      'Talking on a long drive',
+    ],
+  },
+  {
+    'question': 'I\'m looking for a partner who can challenge me to…',
+    'options': [
+      'Step outside my comfort zone',
+      'Try new things',
+      'Think more deeply about things',
+      'Be more adventurous',
+      'Improve my communication skills',
+      'Be more emotionally intelligent',
+      'Read more books',
+      'Pursue my dreams',
+      'Be a better version of myself',
+    ],
+  },
+  {
+    'question': 'The most romantic thing I can do for someone is…',
+    'options': [
+      'Making them a home-cooked meal',
+      'Planning a surprise trip or adventure',
+      'Making them a cup of tea',
+      'Showing them I\'m listening by remembering the little things',
+      'Supporting them when they\'re pursuing a dream',
+      'Giving them a relaxing massage after a long day',
+      'Bringing them flowers just because',
+      'A romantic date',
+      'Sending a thoughtful text just to say I\'m thinking of them',
+      'Telling them how I feel',
+    ],
+  },
+  {
+    'question': 'The perfect gift I could receive is…',
+    'options': [
+      'A thoughtful, handwritten note',
+      'An experience, not a thing',
+      'Tickets to a sports game or a concert',
+      'Something that shows you were really listening',
+      'A surprise weekend trip',
+      'A great book',
+      'A great meal',
+      'Something to help me with my hobby',
+      'A day of no responsibilities',
+      'Anything handmade',
+    ],
+  },
+  {
+    'question': 'My ideal way to be comforted after a bad day is…',
+    'options': [
+      'A long, quiet walk',
+      'A hug and a quiet movie night',
+      'A great home-cooked meal',
+      'A little bit of space to myself',
+      'To talk it out with a good listener',
+      'A good workout',
+      'A surprise',
+      'A good beer',
+      'A long drive with some good music',
+      'A cup of tea',
+    ],
+  },
+  {
+    'question': 'A perfect Friday night looks like…',
+    'options': [
+      'A low-key dinner with friends',
+      'A great movie on the couch with some comfort food',
+      'Quality time with parents or siblings',
+      'Trying out a new restaurant or bar',
+      'Getting a good workout in after a long week',
+      'A board game night with a few close friends',
+      'Going to a live music show',
+      'An adventurous road trip to a new place',
+      'Grilling and chilling with a beer',
+      'Unplugging and enjoying some peace and quiet',
+      'A spontaneous trip to the mountains',
+    ],
+  },
+];
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -70,7 +289,6 @@ class _ExploreScreenState extends State<ExploreScreen>
     if (Platform.isAndroid) return 'explore_profiles_page_android';
     return 'explore_profiles_page';
   }
-
 
   @override
   void initState() {
@@ -293,6 +511,7 @@ class _ExploreScreenState extends State<ExploreScreen>
           'Content-Type': 'application/json',
         },
       );
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         List<dynamic> profilesList = [];
@@ -303,7 +522,9 @@ class _ExploreScreenState extends State<ExploreScreen>
           profilesList = data['profiles'] ?? [];
         }
 
-        if (profilesList.isNotEmpty) {
+        final bool emptyProfiles = profilesList.isEmpty;
+
+        if (!emptyProfiles) {
           final List<Map<String, dynamic>> newProfiles =
               List<Map<String, dynamic>>.from(
                 profilesList.map((e) => Map<String, dynamic>.from(e)),
@@ -319,6 +540,10 @@ class _ExploreScreenState extends State<ExploreScreen>
               _currentProfileIndex = 0;
             });
           }
+        } else {
+          // Server returned empty profiles, but don't update UI state here
+          // since this is background cache update
+          debugPrint('Server returned empty profiles in background update');
         }
       }
     } catch (e) {
@@ -368,28 +593,16 @@ class _ExploreScreenState extends State<ExploreScreen>
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        bool emptyProfiles = false;
         List<dynamic> profilesList = [];
-
-        if (data is List && data.isEmpty) {
-          emptyProfiles = true;
-        } else if (data is Map<String, dynamic>) {
-          if (data.isEmpty) {
-            emptyProfiles = true;
-          } else if (data.length == 1 &&
-              data.values.first is List &&
-              (data.values.first as List).isEmpty) {
-            emptyProfiles = true;
-          } else if (data.containsKey('profiles')) {
-            profilesList = data['profiles'] ?? [];
-            if (profilesList.isEmpty) {
-              emptyProfiles = true;
-            }
-          }
+        if (data is Map<String, dynamic> && data.containsKey('profiles')) {
+          profilesList = data['profiles'] ?? [];
         }
 
-        setState(() {
-          if (!emptyProfiles && profilesList.isNotEmpty) {
+        final bool emptyProfiles = profilesList.isEmpty;
+
+        if (!emptyProfiles) {
+          // Server returned profiles, use them
+          setState(() {
             _profiles = List<Map<String, dynamic>>.from(
               profilesList.map((e) => Map<String, dynamic>.from(e)),
             );
@@ -397,15 +610,33 @@ class _ExploreScreenState extends State<ExploreScreen>
             _currentPage = page;
             _isLoading = false;
             _noMoreProfiles = false;
-            // Save to local storage as soon as you fetch
-            _saveProfilesToLocal(_profiles, _currentPage);
+            _fetchingNextBatch = false;
+            _hasError = false;
+          });
+          // Save to local storage as soon as you fetch
+          _saveProfilesToLocal(_profiles, _currentPage);
+        } else {
+          // Server returned empty profiles, check if we have cached profiles
+          final cachedProfiles = await _loadProfilesFromLocal();
+          if (cachedProfiles) {
+            // We have cached profiles, use them
+            setState(() {
+              _isLoading = false;
+              _noMoreProfiles = false;
+              _fetchingNextBatch = false;
+              _hasError = false;
+            });
           } else {
-            _noMoreProfiles = true;
-            _isLoading = false;
+            // No cached profiles either, show no more profiles
+            setState(() {
+              _noMoreProfiles = true;
+              _isLoading = false;
+              _profiles = [];
+              _fetchingNextBatch = false;
+              _hasError = false;
+            });
           }
-          _fetchingNextBatch = false;
-          _hasError = false;
-        });
+        }
 
         // Fetch distance for the first profile after profiles are loaded
         _fetchAndSetDistance();
@@ -457,10 +688,15 @@ class _ExploreScreenState extends State<ExploreScreen>
             data.containsKey('profiles')) {
           profilesList = data['profiles'] ?? [];
         }
-        if (profilesList.isNotEmpty) {
+        final bool emptyProfiles = profilesList.isEmpty;
+        if (!emptyProfiles) {
           _preloadedProfiles = List<Map<String, dynamic>>.from(
             profilesList.map((e) => Map<String, dynamic>.from(e)),
           );
+        } else {
+          // Server returned empty profiles for preloading, but don't update UI state
+          // since this is just preloading and current profiles should still be available
+          debugPrint('Server returned empty profiles for preloading');
         }
       }
     } catch (e) {
@@ -862,7 +1098,12 @@ class _ExploreScreenState extends State<ExploreScreen>
       // Compare versions
       if (_compareVersions(currentVersion, latestVersion) < 0) {
         if (mounted) {
-          _showUpdateDialog(currentVersion, latestVersion, updateLink, forceUpdate);
+          _showUpdateDialog(
+            currentVersion,
+            latestVersion,
+            updateLink,
+            forceUpdate,
+          );
         }
       }
     } catch (e) {
@@ -873,11 +1114,11 @@ class _ExploreScreenState extends State<ExploreScreen>
   int _compareVersions(String version1, String version2) {
     final v1Parts = version1.split('.').map(int.parse).toList();
     final v2Parts = version2.split('.').map(int.parse).toList();
-    
+
     // Pad with zeros if needed
     while (v1Parts.length < v2Parts.length) v1Parts.add(0);
     while (v2Parts.length < v1Parts.length) v2Parts.add(0);
-    
+
     for (int i = 0; i < v1Parts.length; i++) {
       if (v1Parts[i] < v2Parts[i]) return -1;
       if (v1Parts[i] > v2Parts[i]) return 1;
@@ -885,7 +1126,12 @@ class _ExploreScreenState extends State<ExploreScreen>
     return 0;
   }
 
-  void _showUpdateDialog(String currentVersion, String latestVersion, String updateLink, bool forceUpdate) {
+  void _showUpdateDialog(
+    String currentVersion,
+    String latestVersion,
+    String updateLink,
+    bool forceUpdate,
+  ) {
     showDialog(
       context: context,
       barrierDismissible: !forceUpdate,
@@ -926,7 +1172,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Title
                 Text(
                   forceUpdate ? 'Update Required' : 'Update Available',
@@ -939,7 +1185,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                
+
                 // Subtitle
                 Text(
                   'A new version is available',
@@ -952,7 +1198,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Version info
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -991,7 +1237,10 @@ class _ExploreScreenState extends State<ExploreScreen>
                         ],
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF8B4DFF).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(6),
@@ -1029,7 +1278,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                   ),
                 ),
                 const SizedBox(height: 20),
-                
+
                 // Update button
                 SizedBox(
                   width: double.infinity,
@@ -1037,7 +1286,10 @@ class _ExploreScreenState extends State<ExploreScreen>
                     onPressed: () async {
                       try {
                         final uri = Uri.parse(updateLink);
-                        final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        final success = await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        );
                         if (success && !forceUpdate) {
                           Navigator.of(context).pop();
                         }
@@ -1057,10 +1309,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
-                          PhosphorIconsBold.download,
-                          size: 18,
-                        ),
+                        const Icon(PhosphorIconsBold.download, size: 18),
                         const SizedBox(width: 6),
                         Text(
                           'Update Now',
@@ -1074,7 +1323,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                     ),
                   ),
                 ),
-                
+
                 // Dismiss button (only for non-force updates)
                 if (!forceUpdate) ...[
                   const SizedBox(height: 8),
@@ -1251,7 +1500,13 @@ class _ExploreScreenState extends State<ExploreScreen>
     final String name = user['name']?.toString() ?? 'Unknown';
     final String? gender = biodata['gender']?.toString();
     final String? bio = biodata['bio']?.toString();
-    final String? image = profile['primaryImage']?.toString();
+    final String? image =
+        (profile['images'] != null && profile['images'].isNotEmpty)
+        ? profile['images'][0].toString()
+        : null;
+    final List<String> additionalImages = (profile['images'] != null)
+        ? List<String>.from(profile['images'].skip(1).map((e) => e.toString()))
+        : [];
     final String? city = location['city']?.toString();
     final String? state = location['state']?.toString();
     final String? country = location['country']?.toString();
@@ -1272,6 +1527,30 @@ class _ExploreScreenState extends State<ExploreScreen>
         heightDisplay = "${heightValue.toString()} cm";
       } else if (heightValue is String && heightValue.trim().isNotEmpty) {
         heightDisplay = "${heightValue.trim()} cm";
+      }
+    }
+
+    // Get prompts data
+    final List<dynamic> promptsRaw = profile['prompts'] is List
+        ? profile['prompts'] as List
+        : [];
+    List<Map<String, dynamic>> promptAnswers = [];
+
+    if (promptsRaw.isNotEmpty && gender != null) {
+      final questions = gender.toLowerCase() == 'male'
+          ? _maleQuestions
+          : _femaleQuestions;
+
+      for (int i = 0; i < 7 && i < promptsRaw.length; i++) {
+        final answer = promptsRaw[i];
+        if (answer != null &&
+            answer.toString().isNotEmpty &&
+            answer.toString() != 'null') {
+          promptAnswers.add({
+            'question': questions[i]['question'],
+            'answer': answer.toString(),
+          });
+        }
       }
     }
 
@@ -1938,14 +2217,11 @@ class _ExploreScreenState extends State<ExploreScreen>
                 ),
               const SizedBox(height: 32),
               // Additional Images Section
-              if (profile['additionalImages'] is List &&
-                  (profile['additionalImages'] as List).isNotEmpty)
+              if (additionalImages.isNotEmpty)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    ...((profile['additionalImages'] as List).map<Widget>((
-                      imgUrl,
-                    ) {
+                    ...additionalImages.map<Widget>((imgUrl) {
                       if (imgUrl == null || imgUrl.toString().isEmpty)
                         return const SizedBox.shrink();
                       return Container(
@@ -1970,37 +2246,33 @@ class _ExploreScreenState extends State<ExploreScreen>
                               width: double.infinity,
                               height: MediaQuery.of(context).size.height * 0.8,
                               fit: BoxFit.cover,
-                              placeholder: (context, url) =>
-                                  Container(
-                                    width: double.infinity,
-                                    height:
-                                        MediaQuery.of(context).size.height *
-                                        0.8,
-                                    color: Colors.grey[300],
-                                    child: const Icon(
-                                      Icons.broken_image,
-                                      size: 80,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                              errorWidget: (context, url, error) =>
-                                  Container(
-                                    width: double.infinity,
-                                    height:
-                                        MediaQuery.of(context).size.height *
-                                        0.8,
-                                    color: Colors.grey[300],
-                                    child: const Icon(
-                                      Icons.broken_image,
-                                      size: 80,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                              placeholder: (context, url) => Container(
+                                width: double.infinity,
+                                height:
+                                    MediaQuery.of(context).size.height * 0.8,
+                                color: Colors.grey[300],
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  size: 80,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                width: double.infinity,
+                                height:
+                                    MediaQuery.of(context).size.height * 0.8,
+                                color: Colors.grey[300],
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  size: 80,
+                                  color: Colors.white,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       );
-                    })).toList(),
+                    }).toList(),
                   ],
                 ),
               // Distance Section
@@ -2051,7 +2323,73 @@ class _ExploreScreenState extends State<ExploreScreen>
                   },
                 ),
               ),
-              
+
+              // Prompts Section
+              if (promptAnswers.isNotEmpty) ...[
+                const SizedBox(height: 32),
+                const Align(
+                  alignment: Alignment.center,
+                  child: Text(
+                    "My Prompts",
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                      color: Color(0xFF3B2357),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...promptAnswers
+                    .map(
+                      (prompt) => Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.06),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                          border: Border.all(
+                            color: const Color(0xFFE8E0F0),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              prompt['question'],
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                color: Color(0xFF6D4B86),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              prompt['answer'],
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 20,
+                                color: Color(0xFF3B2357),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ],
+
               // Add Friend Button Section
               const SizedBox(height: 24),
               SizedBox(
@@ -2081,10 +2419,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                           ),
                         )
                       else
-                        const Icon(
-                          PhosphorIconsBold.userPlus,
-                          size: 20,
-                        ),
+                        const Icon(PhosphorIconsBold.userPlus, size: 20),
                       const SizedBox(width: 8),
                       Text(
                         _sendingInvite ? 'Sending Invite...' : 'Start Talking',
