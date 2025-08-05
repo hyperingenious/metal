@@ -1,8 +1,8 @@
-name: lushh
+name: Lushh
 description: "Lushh is a dating app that allows you to find your perfect match."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.4+1
+version: 1.0.5+1
 
 environment:
   sdk: ^3.8.1
@@ -69,7 +69,6 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
@@ -83,10 +82,9 @@ flutter:
   #     - asset: fonts/Poppins-SemiBold.ttf
   #       weight: 600
 
-
   # To add assets to your application, add an assets section, like this:
   assets:
-      - assets/cities_states.json
+    - assets/cities_states.json
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

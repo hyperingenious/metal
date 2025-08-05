@@ -10,6 +10,7 @@ import 'dart:math'; // Added for distance calculation
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:lushh/widgets/expandable_prompts.dart';
 
 // Environment variables for collections
 const databaseId = String.fromEnvironment('DATABASE_ID');
@@ -1404,7 +1405,7 @@ class _ExploreScreenState extends State<ExploreScreen>
             automaticallyImplyLeading: false,
             titleSpacing: 16,
             title: const Text(
-              'lushh',
+              'Lushh',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w700,
@@ -1564,7 +1565,7 @@ class _ExploreScreenState extends State<ExploreScreen>
           automaticallyImplyLeading: false,
           titleSpacing: 16,
           title: const Text(
-            'lushh',
+            'Lushh',
             style: TextStyle(
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w700,
@@ -1826,85 +1827,82 @@ class _ExploreScreenState extends State<ExploreScreen>
                         ),
                         // --- End: Image with bottom gradient overlay ---
 
-                        // Profession at top left of main image (moved from right)
-                        if (professionType != null && professionType.isNotEmpty)
-                          Positioned(
-                            top: 16,
-                            left: 16,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.92),
-                                borderRadius: BorderRadius.circular(22),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                                border: Border.all(
-                                  color: const Color(0xFF8B4DFF),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    _getProfessionIcon(professionType),
-                                    color: const Color(0xFF8B4DFF),
-                                    size: 22,
-                                  ),
-                                  const SizedBox(width: 7),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        professionType[0].toUpperCase() +
-                                            professionType.substring(1),
-                                        style: const TextStyle(
-                                          fontFamily: 'Poppins',
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 15,
-                                          color: Color(0xFF3B2357),
-                                        ),
-                                      ),
-                                      if (professionSubtype != null &&
-                                          professionSubtype.isNotEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 1.5,
-                                          ),
-                                          child: Text(
-                                            professionSubtype,
-                                            style: const TextStyle(
-                                              fontFamily: 'Poppins',
-                                              fontWeight: FontWeight.w400,
-                                              fontSize: 12.5,
-                                              color: Color(0xFF6D4B86),
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                        // Invite circular button just above the name
+                        // Name, age, profession and invite button at bottom left
                         Positioned(
                           left: 16,
-                          bottom:
-                              120, // Increased from 90 to 120 for more space above the name
+                          bottom: 32,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Text(
+                                '$name, ${age != null ? age : "--"}',
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 20,
+                                  color: Colors.white,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black38,
+                                      blurRadius: 6,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (professionType != null &&
+                                  professionType.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      _getProfessionIcon(professionType),
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      professionType[0].toUpperCase() +
+                                          professionType.substring(1),
+                                      style: const TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 16,
+                                        color: Colors.white,
+                                        shadows: [
+                                          Shadow(
+                                            color: Colors.black38,
+                                            blurRadius: 4,
+                                            offset: Offset(0, 1),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (professionSubtype != null &&
+                                        professionSubtype.isNotEmpty) ...[
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '• ${professionSubtype}',
+                                        style: const TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: 14,
+                                          color: Colors.white,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black38,
+                                              blurRadius: 4,
+                                              offset: Offset(0, 1),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                              const SizedBox(height: 12),
                               GestureDetector(
                                 onTap: _sendingInvite ? null : _sendInvite,
                                 child: Container(
@@ -1939,51 +1937,6 @@ class _ExploreScreenState extends State<ExploreScreen>
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-
-                        // Name, gender, age at bottom left
-                        Positioned(
-                          left: 16,
-                          bottom: 32,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                name,
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 28,
-                                  color: Colors.white,
-                                  shadows: [
-                                    Shadow(
-                                      color: Colors.black38,
-                                      blurRadius: 6,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${gender != null && gender.isNotEmpty ? gender[0].toUpperCase() : "?"}, ${age != null ? age : "--"}',
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 26,
-                                  color: Colors.white,
-                                  shadows: [
-                                    Shadow(
-                                      color: Colors.black38,
-                                      blurRadius: 6,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Profession Section (removed from here)
                             ],
                           ),
                         ),
@@ -2035,7 +1988,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                   style: const TextStyle(
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.w700,
-                    fontSize: 24,
+                    fontSize: 21,
                     color: Color(0xFF3B2357),
                   ),
                 ),
@@ -2221,60 +2174,81 @@ class _ExploreScreenState extends State<ExploreScreen>
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    ...additionalImages.map<Widget>((imgUrl) {
-                      if (imgUrl == null || imgUrl.toString().isEmpty)
-                        return const SizedBox.shrink();
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 20),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: MediaQuery.of(context).size.height * 0.8,
-                            child: CachedNetworkImage(
-                              imageUrl: imgUrl.toString(),
-                              width: double.infinity,
-                              height: MediaQuery.of(context).size.height * 0.8,
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) => Container(
-                                width: double.infinity,
-                                height:
-                                    MediaQuery.of(context).size.height * 0.8,
-                                color: Colors.grey[300],
-                                child: const Icon(
-                                  Icons.broken_image,
-                                  size: 80,
-                                  color: Colors.white,
+                    ...additionalImages.asMap().entries.expand((entry) {
+                      final idx = entry.key;
+                      final imgUrl = entry.value;
+                      final widgets = <Widget>[];
+                      if (imgUrl == null || imgUrl.toString().isEmpty) {
+                        widgets.add(const SizedBox.shrink());
+                      } else {
+                        widgets.add(
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 20),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
                                 ),
-                              ),
-                              errorWidget: (context, url, error) => Container(
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(18),
+                              child: SizedBox(
                                 width: double.infinity,
                                 height:
                                     MediaQuery.of(context).size.height * 0.8,
-                                color: Colors.grey[300],
-                                child: const Icon(
-                                  Icons.broken_image,
-                                  size: 80,
-                                  color: Colors.white,
+                                child: CachedNetworkImage(
+                                  imageUrl: imgUrl.toString(),
+                                  width: double.infinity,
+                                  height:
+                                      MediaQuery.of(context).size.height * 0.8,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => Container(
+                                    width: double.infinity,
+                                    height:
+                                        MediaQuery.of(context).size.height *
+                                        0.8,
+                                    color: Colors.grey[300],
+                                    child: const Icon(
+                                      Icons.broken_image,
+                                      size: 80,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  errorWidget: (context, url, error) =>
+                                      Container(
+                                        width: double.infinity,
+                                        height:
+                                            MediaQuery.of(context).size.height *
+                                            0.8,
+                                        color: Colors.grey[300],
+                                        child: const Icon(
+                                          Icons.broken_image,
+                                          size: 80,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      );
+                        );
+                      }
+                      // Insert prompts after the second image (index 1)
+                      if (idx == 1 && promptAnswers.isNotEmpty) {
+                        widgets.add(ExpandablePrompts(prompts: promptAnswers));
+                      }
+                      return widgets;
                     }).toList(),
                   ],
                 ),
+              // If there are less than 2 images, show prompts after the last image
+              if (additionalImages.length < 2 && promptAnswers.isNotEmpty)
+                ExpandablePrompts(prompts: promptAnswers),
+
               // Distance Section
               Padding(
                 padding: const EdgeInsets.only(top: 16.0, bottom: 32.0),
@@ -2324,74 +2298,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                 ),
               ),
 
-              // Prompts Section
-              if (promptAnswers.isNotEmpty) ...[
-                const SizedBox(height: 32),
-                const Align(
-                  alignment: Alignment.center,
-                  child: Text(
-                    "My Prompts",
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                      color: Color(0xFF3B2357),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ...promptAnswers
-                    .map(
-                      (prompt) => Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                          border: Border.all(
-                            color: const Color(0xFFE8E0F0),
-                            width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              prompt['question'],
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                                color: Color(0xFF6D4B86),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              prompt['answer'],
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w700,
-                                fontSize: 20,
-                                color: Color(0xFF3B2357),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ],
-
               // Add Friend Button Section
-              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -2399,7 +2306,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF8B4DFF),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 22),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(19),
                     ),
@@ -2422,7 +2329,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                         const Icon(PhosphorIconsBold.userPlus, size: 20),
                       const SizedBox(width: 8),
                       Text(
-                        _sendingInvite ? 'Sending Invite...' : 'Start Talking',
+                        _sendingInvite ? 'Sending Match...' : 'Send Match',
                         style: const TextStyle(
                           fontFamily: 'Poppins',
                           fontWeight: FontWeight.w600,

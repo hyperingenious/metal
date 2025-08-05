@@ -6,9 +6,12 @@ import 'package:appwrite/appwrite.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:lushh/widgets/expandable_prompts.dart';
 
 // Add prompts collection ID
-const String promptsCollectionId = String.fromEnvironment('PROMPTS_COLLECTIONID');
+const String promptsCollectionId = String.fromEnvironment(
+  'PROMPTS_COLLECTIONID',
+);
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -45,6 +48,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<Map<String, dynamic>> _promptAnswers = [];
   bool _isPromptsLoading = false;
   String? _promptsError;
+  // Remove _expandedPromptIndex since it's now handled in the widget
 
   // Questions data
   final List<Map<String, dynamic>> _maleQuestions = [
@@ -322,7 +326,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final promptDocs = await databases.listDocuments(
-        databaseId: databaseId, // This is now correctly imported from appwrite.dart
+        databaseId:
+            databaseId, // This is now correctly imported from appwrite.dart
         collectionId: promptsCollectionId,
         queries: [Query.equal('user', userId!)],
       );
@@ -330,8 +335,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       List<Map<String, dynamic>> answers = [];
       if (promptDocs.documents.isNotEmpty) {
         final data = promptDocs.documents[0].data;
-        final questions = gender!.toLowerCase() == 'male' ? _maleQuestions : _femaleQuestions;
-        
+        final questions = gender!.toLowerCase() == 'male'
+            ? _maleQuestions
+            : _femaleQuestions;
+
         for (int i = 0; i < 7; i++) {
           final answer = data['answer_${i + 1}'];
           if (answer != null && answer.toString().isNotEmpty) {
@@ -516,7 +523,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           errorMessage = null;
           debugError = null;
         });
-        
+
         // Fetch prompts data after profile data is loaded
         await _fetchPromptsData();
       } else {
@@ -525,7 +532,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           errorMessage = null;
           debugError = null;
         });
-        
+
         // Still fetch prompts data even if profile didn't change
         await _fetchPromptsData();
       }
@@ -751,14 +758,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           width: double.infinity,
                                           height: mainImageHeight,
                                           fit: BoxFit.cover,
-                                          placeholder: (context, url) => Container(
-                                            color: Colors.grey[300],
-                                            child: const Icon(Icons.person, size: 80, color: Colors.white),
-                                          ),
-                                          errorWidget: (context, url, error) => Container(
-                                            color: Colors.grey[300],
-                                            child: const Icon(Icons.person, size: 80, color: Colors.white),
-                                          ),
+                                          placeholder: (context, url) =>
+                                              Container(
+                                                color: Colors.grey[300],
+                                                child: const Icon(
+                                                  Icons.person,
+                                                  size: 80,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                          errorWidget: (context, url, error) =>
+                                              Container(
+                                                color: Colors.grey[300],
+                                                child: const Icon(
+                                                  Icons.person,
+                                                  size: 80,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
                                         )
                                       : Container(
                                           width: double.infinity,
@@ -805,7 +822,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   vertical: 8,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.92),
+                                  color: const Color(0xFF3B2357),
                                   borderRadius: BorderRadius.circular(22),
                                   boxShadow: [
                                     BoxShadow(
@@ -814,17 +831,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       offset: const Offset(0, 2),
                                     ),
                                   ],
-                                  border: Border.all(
-                                    color: const Color(0xFF8B4DFF),
-                                    width: 1,
-                                  ),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
                                       _getProfessionIcon(professionType),
-                                      color: const Color(0xFF8B4DFF),
+                                      color: Colors.white,
                                       size: 22,
                                     ),
                                     const SizedBox(width: 7),
@@ -839,7 +852,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             fontFamily: 'Poppins',
                                             fontWeight: FontWeight.w600,
                                             fontSize: 15,
-                                            color: Color(0xFF3B2357),
+                                            color: Colors.white,
                                           ),
                                         ),
                                         if ((professionName ?? '').isNotEmpty)
@@ -853,7 +866,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                 fontFamily: 'Poppins',
                                                 fontWeight: FontWeight.w400,
                                                 fontSize: 12.5,
-                                                color: Color(0xFF6D4B86),
+                                                color: Colors.white,
                                               ),
                                             ),
                                           ),
@@ -1040,7 +1053,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         style: const TextStyle(
                           fontFamily: 'Poppins',
                           fontWeight: FontWeight.w700,
-                          fontSize: 24,
+                          fontSize: 22,
                           color: Color(0xFF3B2357),
                         ),
                       ),
@@ -1115,7 +1128,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                     ],
-                    
+
                     const SizedBox(height: 24),
                     // Additional Images Section (imitate explore)
                     if (images.length > 1)
@@ -1148,12 +1161,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     fit: BoxFit.cover,
                                     placeholder: (context, url) => Container(
                                       color: Colors.grey[300],
-                                      child: const Icon(Icons.broken_image, size: 80, color: Colors.white),
+                                      child: const Icon(
+                                        Icons.broken_image,
+                                        size: 80,
+                                        color: Colors.white,
+                                      ),
                                     ),
-                                    errorWidget: (context, url, error) => Container(
-                                      color: Colors.grey[300],
-                                      child: const Icon(Icons.broken_image, size: 80, color: Colors.white),
-                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                          color: Colors.grey[300],
+                                          child: const Icon(
+                                            Icons.broken_image,
+                                            size: 80,
+                                            color: Colors.white,
+                                          ),
+                                        ),
                                   ),
                                 ),
                               ),
@@ -1161,72 +1183,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           }),
                         ],
                       ),
-                    
+
                     // Prompts Section - moved to end
                     if (_promptAnswers.isNotEmpty) ...[
-                      const SizedBox(height: 32),
-                      const Align(
-                        alignment: Alignment.center,
-                        child: Text(
-                          "My Prompts",
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 18,
-                            color: Color(0xFF3B2357),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ..._promptAnswers.map((prompt) => Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                          border: Border.all(
-                            color: const Color(0xFFE8E0F0),
-                            width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              prompt['question'],
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                                color: Color(0xFF6D4B86),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              prompt['answer'],
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w700,
-                                fontSize: 20,
-                                color: Color(0xFF3B2357),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )).toList(),
+                      ExpandablePrompts(prompts: _promptAnswers),
                     ] else if (_isPromptsLoading) ...[
                       const SizedBox(height: 32),
                       const Center(
                         child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8B4DFF)),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFF8B4DFF),
+                          ),
                         ),
                       ),
                     ] else if (_promptsError != null) ...[
@@ -1247,20 +1214,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
     );
-  }
-
-  int _calculateAge(String dobString) {
-    try {
-      final dobDate = DateTime.parse(dobString);
-      final now = DateTime.now();
-      int age = now.year - dobDate.year;
-      if (now.month < dobDate.month ||
-          (now.month == dobDate.month && now.day < dobDate.day)) {
-        age--;
-      }
-      return age;
-    } catch (e) {
-      return 0;
-    }
   }
 }

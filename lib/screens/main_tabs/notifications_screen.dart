@@ -101,9 +101,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final List<Map<String, dynamic>> notifications = [];
 
       for (final doc in result?.documents ?? []) {
-        final fromUserId = doc.data['from']['\$id'];
-        final toUserId = doc.data['to']['\$id'];
-        if (fromUserId == null) continue;
+        // Add comprehensive null safety checks
+        final fromData = doc.data['from'];
+        final toData = doc.data['to'];
+        
+        // Skip documents with missing or null from/to data
+        if (fromData == null || toData == null) {
+          debugPrint('Skipping notification with null from/to data: ${doc.$id}');
+          continue;
+        }
+        
+        // Check if fromData and toData are Maps and have the required $id field
+        if (fromData is! Map || toData is! Map) {
+          debugPrint('Skipping notification with invalid from/to data structure: ${doc.$id}');
+          continue;
+        }
+        
+        final fromUserId = fromData['\$id'];
+        final toUserId = toData['\$id'];
+        
+        // Skip if any required ID is null or empty
+        if (fromUserId == null || toUserId == null || 
+            fromUserId.toString().isEmpty || toUserId.toString().isEmpty) {
+          debugPrint('Skipping notification with null/empty user IDs: ${doc.$id}');
+          continue;
+        }
+        
         await databases.updateDocument(
           databaseId: appwriteDatabaseId,
           collectionId: appwriteNotificationsCollectionId,
@@ -811,7 +834,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ),
                       )
                     : _sentInvitations.isEmpty
-                        ? const SizedBox.shrink()
+                        ? const Center(
+                            child: Text(
+                              'No notifications sent.',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w400,
+                                fontSize: 15,
+                                color: Color(0xFF6D4B86),
+                              ),
+                            ),
+                          )
                         : RefreshIndicator(
                             onRefresh: () async {
                               await _fetchSentInvitations();
