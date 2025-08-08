@@ -278,6 +278,12 @@ class _ExploreScreenState extends State<ExploreScreen>
   // Scroll controller for scrolling to top
   final ScrollController _scrollController = ScrollController();
 
+  // Add new variables for card stack
+  static const int _maxVisibleCards = 3;
+  static const double _cardSpacing = 8.0;
+  static const double _cardScale = 0.95;
+  static const double _cardOpacity = 0.8;
+
   // Use different keys for different OS for native localstorage separation
   static String get _localProfilesKey {
     if (Platform.isIOS) return 'explore_profiles_ios';
@@ -1351,6 +1357,337 @@ class _ExploreScreenState extends State<ExploreScreen>
     );
   }
 
+  // Helper method to build a single card
+  Widget _buildProfileCard(Map<String, dynamic> profile, int index, {
+    double? dragOffset,
+    double? rotation,
+    bool isTopCard = false,
+  }) {
+    final biodata = profile['biodata'] is Map<String, dynamic>
+        ? profile['biodata']
+        : <String, dynamic>{};
+    final location = profile['location'] is Map<String, dynamic>
+        ? profile['location']
+        : <String, dynamic>{};
+    final user = biodata['user'] is Map<String, dynamic>
+        ? biodata['user']
+        : <String, dynamic>{};
+    final String name = user['name']?.toString() ?? 'Unknown';
+    final String? gender = biodata['gender']?.toString();
+    final String? bio = biodata['bio']?.toString();
+    final String? image =
+        (profile['images'] != null && profile['images'].isNotEmpty)
+        ? profile['images'][0].toString()
+        : null;
+    final List<String> additionalImages = (profile['images'] != null)
+        ? List<String>.from(profile['images'].skip(1).map((e) => e.toString()))
+        : [];
+    final String? city = location['city']?.toString();
+    final String? state = location['state']?.toString();
+    final String? country = location['country']?.toString();
+
+    // Get age from dob
+    final String? dobString = biodata['dob']?.toString();
+    final int? age = _calculateAgeFromDob(dobString);
+
+    // Get profession info
+    final String? professionType = biodata['profession_name']?.toString();
+    final String? professionSubtype = biodata['sub_type']?.toString();
+
+    return Container(
+      margin: EdgeInsets.only(
+        bottom: 24,
+        left: index * _cardSpacing,
+        right: index * _cardSpacing,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Image with bottom gradient overlay
+          ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: SizedBox(
+              width: double.infinity,
+              height: MediaQuery.of(context).size.height * 0.8,
+              child: Stack(
+                children: [
+                  image != null && image.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: image,
+                          width: double.infinity,
+                          height: MediaQuery.of(context).size.height * 0.8,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            width: double.infinity,
+                            height: 420,
+                            color: Colors.grey[300],
+                            child: const Icon(
+                              Icons.person,
+                              size: 80,
+                              color: Colors.white,
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            width: double.infinity,
+                            height: 420,
+                            color: Colors.grey[300],
+                            child: const Icon(
+                              Icons.person,
+                              size: 80,
+                              color: Colors.white,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          width: double.infinity,
+                          height: 420,
+                          color: Colors.grey[300],
+                          child: const Icon(
+                            Icons.person,
+                            size: 80,
+                            color: Colors.white,
+                          ),
+                        ),
+                  // Gradient overlay at the bottom
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.transparent,
+                              Color.fromARGB(120, 0, 0, 0),
+                              Color.fromARGB(180, 0, 0, 0),
+                            ],
+                            stops: [0.0, 0.6, 0.85, 1.0],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Name, age, profession and invite button at bottom left
+          Positioned(
+            left: 16,
+            bottom: 32,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$name, ${age != null ? age : "--"}',
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black38,
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+                if (professionType != null && professionType.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _getProfessionIcon(professionType),
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        professionType[0].toUpperCase() +
+                            professionType.substring(1),
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w500,
+                          fontSize: 16,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black38,
+                              blurRadius: 4,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (professionSubtype != null &&
+                          professionSubtype.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        Text(
+                          '• ${professionSubtype}',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w400,
+                            fontSize: 14,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black38,
+                                blurRadius: 4,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+                if (isTopCard) ...[
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: _sendingInvite ? null : _sendInvite,
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8B4DFF),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.12),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: _sendingInvite
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(
+                                PhosphorIconsBold.userPlus,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          // Loading indicator for next batch
+          if (_fetchingNextBatch && isTopCard)
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Build the card stack
+  Widget _buildCardStack() {
+    if (_profiles.isEmpty) return const SizedBox.shrink();
+
+    final List<Widget> cards = [];
+    final int startIndex = _currentProfileIndex;
+    final int endIndex = startIndex + _maxVisibleCards;
+    
+    // Build cards in reverse order so the current card is on top
+    for (int i = _maxVisibleCards - 1; i >= 0; i--) {
+      final int profileIndex = startIndex + i;
+      if (profileIndex >= _profiles.length) continue;
+      
+      final profile = _profiles[profileIndex];
+      final bool isTopCard = i == 0;
+      
+      // Calculate transform for each card
+      double scale = 1.0;
+      double translateY = 0.0;
+      
+      if (i > 0) {
+        scale = _cardScale - (i * 0.05);
+        translateY = i * 4.0;
+      }
+      
+      // Apply drag transform only to top card
+      double dragOffset = 0.0;
+      double rotation = 0.0;
+      
+      if (isTopCard) {
+        dragOffset = _dragDx;
+        rotation = (_dragDx / MediaQuery.of(context).size.width) * 0.21;
+      }
+      
+      cards.add(
+        Positioned.fill(
+          child: Transform.translate(
+            offset: Offset(
+              dragOffset,
+              translateY,
+            ),
+            child: Transform.scale(
+              scale: scale,
+              child: Transform.rotate(
+                angle: rotation,
+                child: _buildProfileCard(
+                  profile,
+                  i,
+                  dragOffset: dragOffset,
+                  rotation: rotation,
+                  isTopCard: isTopCard,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.8 + 24,
+      child: Stack(
+        children: cards,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -1501,10 +1838,6 @@ class _ExploreScreenState extends State<ExploreScreen>
     final String name = user['name']?.toString() ?? 'Unknown';
     final String? gender = biodata['gender']?.toString();
     final String? bio = biodata['bio']?.toString();
-    final String? image =
-        (profile['images'] != null && profile['images'].isNotEmpty)
-        ? profile['images'][0].toString()
-        : null;
     final List<String> additionalImages = (profile['images'] != null)
         ? List<String>.from(profile['images'].skip(1).map((e) => e.toString()))
         : [];
@@ -1608,7 +1941,7 @@ class _ExploreScreenState extends State<ExploreScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Profile Card with swipe functionality and animation
+              // Card Stack with swipe functionality
               GestureDetector(
                 onHorizontalDragStart: (details) {
                   if (_isSwiping) return;
@@ -1703,267 +2036,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                     });
                   }
                 },
-                child: AnimatedBuilder(
-                  animation: _swipeController,
-                  builder: (context, child) {
-                    Offset offset;
-                    double rotation;
-                    if (_isSwiping) {
-                      offset = _swipeAnimation.value;
-                      rotation = _swipeRotationAnimation.value;
-                    } else {
-                      offset = Offset(
-                        _dragDx / MediaQuery.of(context).size.width,
-                        0,
-                      );
-                      rotation =
-                          (_dragDx / MediaQuery.of(context).size.width) * 0.21;
-                    }
-                    return Transform.translate(
-                      offset: Offset(
-                        offset.dx * MediaQuery.of(context).size.width,
-                        offset.dy * MediaQuery.of(context).size.height * 0.15,
-                      ),
-                      child: Transform.rotate(angle: rotation, child: child),
-                    );
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 24),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(18),
-                      color: Colors.white,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      children: [
-                        // --- Begin: Image with bottom gradient overlay ---
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: MediaQuery.of(context).size.height * 0.8,
-                            child: Stack(
-                              children: [
-                                image != null && image.isNotEmpty
-                                    ? CachedNetworkImage(
-                                        imageUrl: image,
-                                        width: double.infinity,
-                                        height:
-                                            MediaQuery.of(context).size.height *
-                                            0.8,
-                                        fit: BoxFit.cover,
-                                        placeholder: (context, url) =>
-                                            Container(
-                                              width: double.infinity,
-                                              height: 420,
-                                              color: Colors.grey[300],
-                                              child: const Icon(
-                                                Icons.person,
-                                                size: 80,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                        errorWidget: (context, url, error) =>
-                                            Container(
-                                              width: double.infinity,
-                                              height: 420,
-                                              color: Colors.grey[300],
-                                              child: const Icon(
-                                                Icons.person,
-                                                size: 80,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                      )
-                                    : Container(
-                                        width: double.infinity,
-                                        height: 420,
-                                        color: Colors.grey[300],
-                                        child: const Icon(
-                                          Icons.person,
-                                          size: 80,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                // Gradient overlay at the bottom
-                                Positioned.fill(
-                                  child: IgnorePointer(
-                                    child: Container(
-                                      decoration: const BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          colors: [
-                                            Colors.transparent,
-                                            Colors.transparent,
-                                            Color.fromARGB(
-                                              120,
-                                              0,
-                                              0,
-                                              0,
-                                            ), // semi-transparent black
-                                            Color.fromARGB(
-                                              180,
-                                              0,
-                                              0,
-                                              0,
-                                            ), // more opaque at very bottom
-                                          ],
-                                          stops: [0.0, 0.6, 0.85, 1.0],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        // --- End: Image with bottom gradient overlay ---
-
-                        // Name, age, profession and invite button at bottom left
-                        Positioned(
-                          left: 16,
-                          bottom: 32,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '$name, ${age != null ? age : "--"}',
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 20,
-                                  color: Colors.white,
-                                  shadows: [
-                                    Shadow(
-                                      color: Colors.black38,
-                                      blurRadius: 6,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (professionType != null &&
-                                  professionType.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      _getProfessionIcon(professionType),
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      professionType[0].toUpperCase() +
-                                          professionType.substring(1),
-                                      style: const TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 16,
-                                        color: Colors.white,
-                                        shadows: [
-                                          Shadow(
-                                            color: Colors.black38,
-                                            blurRadius: 4,
-                                            offset: Offset(0, 1),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    if (professionSubtype != null &&
-                                        professionSubtype.isNotEmpty) ...[
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '• ${professionSubtype}',
-                                        style: const TextStyle(
-                                          fontFamily: 'Poppins',
-                                          fontWeight: FontWeight.w400,
-                                          fontSize: 14,
-                                          color: Colors.white,
-                                          shadows: [
-                                            Shadow(
-                                              color: Colors.black38,
-                                              blurRadius: 4,
-                                              offset: Offset(0, 1),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ],
-                              const SizedBox(height: 12),
-                              GestureDetector(
-                                onTap: _sendingInvite ? null : _sendInvite,
-                                child: Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF8B4DFF),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.12),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: _sendingInvite
-                                        ? const SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: CircularProgressIndicator(
-                                              color: Colors.white,
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : const Icon(
-                                            PhosphorIconsBold.userPlus,
-                                            color: Colors.white,
-                                            size: 28,
-                                          ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Removed the old Invite button from bottom center
-                        if (_fetchingNextBatch)
-                          Positioned(
-                            right: 16,
-                            bottom: 16,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.8),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
+                child: _buildCardStack(),
               ),
               // Bio Section
               const Align(

@@ -42,7 +42,7 @@ class AddGenderScreen extends StatefulWidget {
 }
 
 class _AddGenderScreenState extends State<AddGenderScreen> {
-  String _selectedGender = 'Male';
+  String? _selectedGender; // Changed from 'Male' to null
   String _selectedProfession = 'Student';
   final TextEditingController _professionNameController =
       TextEditingController();
@@ -60,6 +60,16 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
   ];
 
   Future<void> _submit() async {
+    if (_selectedGender == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select your gender'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (_professionNameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -99,7 +109,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
         collectionId: biodataCollectionId,
         documentId: bioDataDocumentID,
         data: {
-          'gender': _selectedGender.toLowerCase(),
+          'gender': _selectedGender!.toLowerCase(), // Add ! since we validated it's not null
           'profession_type': _selectedProfession,
           'profession_name': _professionNameController.text.trim(),
           'bio': _bioController.text.trim(),
@@ -152,22 +162,25 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = const Color(0xFF2D1B3D);
-    final accentColor = const Color(0xFF7B4AE2);
+    // Simple, clean color scheme
+    final primaryColor = const Color(0xFF6366F1);
+    final primaryDark = const Color(0xFF3B2357);
+    final textPrimary = const Color(0xFF1F2937);
+    final textSecondary = const Color(0xFF6B7280);
 
     return Scaffold(
-      backgroundColor: const Color(0xfff7f7f7),
+      backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
         title: const Text(
           "Tell us more...",
           style: TextStyle(
             fontFamily: 'Poppins',
             fontWeight: FontWeight.w600,
-            color: Color(0xFF3B2357),
+            color: Color(0xFF1F2937),
           ),
         ),
         backgroundColor: Colors.white,
-        foregroundColor: themeColor,
+        foregroundColor: textPrimary,
         elevation: 0.5,
         centerTitle: true,
       ),
@@ -189,7 +202,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: themeColor,
+                          color: textPrimary,
                           fontFamily: 'Poppins',
                           letterSpacing: -0.5,
                         ),
@@ -199,7 +212,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                         "Help us personalize your experience by sharing a bit about yourself.",
                         style: TextStyle(
                           fontSize: 16,
-                          color: Colors.black.withOpacity(0.7),
+                          color: textSecondary,
                           fontFamily: 'Poppins',
                         ),
                       ),
@@ -229,7 +242,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                         children: [
                           Icon(
                             PhosphorIconsRegular.genderIntersex,
-                            color: accentColor,
+                            color: primaryColor,
                             size: 24,
                           ),
                           const SizedBox(width: 12),
@@ -238,7 +251,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 18,
-                              color: themeColor,
+                              color: textPrimary,
                               fontFamily: 'Poppins',
                             ),
                           ),
@@ -251,7 +264,8 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                             child: _buildGenderOption(
                               'Male',
                               PhosphorIconsRegular.genderMale,
-                              accentColor,
+                              primaryColor,
+                              primaryDark,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -259,7 +273,8 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                             child: _buildGenderOption(
                               'Female',
                               PhosphorIconsRegular.genderFemale,
-                              accentColor,
+                              primaryColor,
+                              primaryDark,
                             ),
                           ),
                         ],
@@ -292,7 +307,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                         children: [
                           Icon(
                             PhosphorIconsRegular.briefcase,
-                            color: accentColor,
+                            color: primaryColor,
                             size: 24,
                           ),
                           const SizedBox(width: 12),
@@ -301,7 +316,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 18,
-                              color: themeColor,
+                              color: textPrimary,
                               fontFamily: 'Poppins',
                             ),
                           ),
@@ -314,7 +329,8 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                         children: _professions.map((profession) {
                           return _buildProfessionOption(
                             profession,
-                            accentColor,
+                            primaryColor,
+                            primaryDark,
                           );
                         }).toList(),
                       ),
@@ -325,7 +341,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                           labelText: "Profession Name",
                           labelStyle: TextStyle(
                             fontFamily: 'Poppins',
-                            color: accentColor,
+                            color: primaryColor,
                             fontWeight: FontWeight.w500,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -335,24 +351,24 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: accentColor.withOpacity(0.3),
+                              color: primaryColor.withOpacity(0.3),
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: accentColor.withOpacity(0.3),
+                              color: primaryColor.withOpacity(0.3),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: accentColor,
+                              color: primaryColor,
                               width: 2,
                             ),
                           ),
                           filled: true,
-                          fillColor: const Color(0xFFF8EBF9),
+                          fillColor: const Color(0xFFF9FAFB),
                         ),
                       ),
                     ],
@@ -383,7 +399,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                         children: [
                           Icon(
                             PhosphorIconsRegular.user,
-                            color: accentColor,
+                            color: primaryColor,
                             size: 24,
                           ),
                           const SizedBox(width: 12),
@@ -392,7 +408,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 18,
-                              color: themeColor,
+                              color: textPrimary,
                               fontFamily: 'Poppins',
                             ),
                           ),
@@ -407,7 +423,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                           labelText: "Tell us about yourself",
                           labelStyle: TextStyle(
                             fontFamily: 'Poppins',
-                            color: accentColor,
+                            color: primaryColor,
                             fontWeight: FontWeight.w500,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -417,28 +433,28 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: accentColor.withOpacity(0.3),
+                              color: primaryColor.withOpacity(0.3),
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: accentColor.withOpacity(0.3),
+                              color: primaryColor.withOpacity(0.3),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: accentColor,
+                              color: primaryColor,
                               width: 2,
                             ),
                           ),
                           filled: true,
-                          fillColor: const Color(0xFFF8EBF9),
+                          fillColor: const Color(0xFFF9FAFB),
                           counterStyle: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 12,
-                            color: accentColor,
+                            color: primaryColor,
                           ),
                         ),
                       ),
@@ -455,7 +471,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _submit,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: accentColor,
+                      backgroundColor: primaryDark,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -491,7 +507,12 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
     );
   }
 
-  Widget _buildGenderOption(String gender, IconData icon, Color accentColor) {
+  Widget _buildGenderOption(
+    String gender,
+    IconData icon,
+    Color accentColor,
+    Color darkAccentColor,
+  ) {
     final isSelected = _selectedGender == gender;
 
     return GestureDetector(
@@ -503,10 +524,10 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
         decoration: BoxDecoration(
-          color: isSelected ? accentColor : Colors.transparent,
+          color: isSelected ? darkAccentColor : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? accentColor : accentColor.withOpacity(0.3),
+            color: isSelected ? darkAccentColor : accentColor.withOpacity(0.3),
             width: 2,
           ),
         ),
@@ -533,7 +554,11 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
     );
   }
 
-  Widget _buildProfessionOption(String profession, Color accentColor) {
+  Widget _buildProfessionOption(
+    String profession,
+    Color accentColor,
+    Color darkAccentColor,
+  ) {
     final isSelected = _selectedProfession == profession;
 
     // Get appropriate icon for each profession
@@ -565,10 +590,10 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: isSelected ? accentColor : Colors.transparent,
+          color: isSelected ? darkAccentColor : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? accentColor : accentColor.withOpacity(0.3),
+            color: isSelected ? darkAccentColor : accentColor.withOpacity(0.3),
             width: 2,
           ),
         ),

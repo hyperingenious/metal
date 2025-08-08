@@ -25,6 +25,7 @@ class _IsAnsweredAllQuestionsScreenState
     extends State<IsAnsweredAllQuestionsScreen>
     with TickerProviderStateMixin {
   bool _isLoading = true;
+  bool _isSubmitting = false; // Add this line
   String? _gender; // 'male' or 'female'
   int _currentQuestionIndex = 0;
   List<int?> _answers = List.filled(
@@ -358,6 +359,13 @@ class _IsAnsweredAllQuestionsScreenState
   }
 
   Future<void> isAnsweredAllQuestionsScreenSubmitAnswers() async {
+    // Prevent double submission
+    if (_isSubmitting) return;
+    
+    setState(() {
+      _isSubmitting = true;
+    });
+
     try {
       // Get current user
       final user = await account.get();
@@ -436,6 +444,13 @@ class _IsAnsweredAllQuestionsScreenState
         });
       }
     } catch (e) {
+      // Reset submitting state on error
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+      
       // Show error dialog
       if (mounted) {
         showDialog(
@@ -753,7 +768,7 @@ class _IsAnsweredAllQuestionsScreenState
 
                             // Next/Submit button with improved design
                             GestureDetector(
-                              onTap: selectedOption != null
+                              onTap: selectedOption != null && !_isSubmitting
                                   ? (_currentQuestionIndex <
                                             _questionCount -
                                                 1
@@ -764,11 +779,11 @@ class _IsAnsweredAllQuestionsScreenState
                                 width: 56,
                                 height: 56,
                                 decoration: BoxDecoration(
-                                  color: selectedOption != null
+                                  color: selectedOption != null && !_isSubmitting
                                       ? color
                                       : color.withOpacity(0.2),
                                   shape: BoxShape.circle,
-                                  boxShadow: selectedOption != null
+                                  boxShadow: selectedOption != null && !_isSubmitting
                                       ? [
                                           BoxShadow(
                                             color: color
@@ -780,15 +795,24 @@ class _IsAnsweredAllQuestionsScreenState
                                         ]
                                       : null,
                                 ),
-                                child: Icon(
-                                  _currentQuestionIndex <
-                                          _questionCount -
-                                              1
-                                      ? Icons.arrow_forward_rounded
-                                      : Icons.check_rounded,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
+                                child: _isSubmitting && _currentQuestionIndex == _questionCount - 1
+                                    ? SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        ),
+                                      )
+                                    : Icon(
+                                        _currentQuestionIndex <
+                                                _questionCount -
+                                                    1
+                                            ? Icons.arrow_forward_rounded
+                                            : Icons.check_rounded,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
                               ),
                             ),
                           ],

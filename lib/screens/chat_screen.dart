@@ -208,11 +208,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   // Close the realtime connection and cancel timer
   void _closeRealtimeConnection() {
-    if (_realtimeSub != null) {
-      print(
-        'Unsubscribing from realtime events for connectionId: ${widget.connectionId}',
-      );
-    }
     _realtimeSub?.cancel();
     _realtimeSub = null;
   }
@@ -227,7 +222,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         .stream
         .listen((event) async {
           final payload = event.payload;
-          print('Realtime event: $payload');
 
           if (payload == null || payload is! Map) return;
 

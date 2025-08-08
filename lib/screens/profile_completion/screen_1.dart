@@ -31,6 +31,7 @@ const preferenceCollectionId = String.fromEnvironment(
   'PREFERENCE_COLLECTIONID',
 );
 const reportsCollectionId = String.fromEnvironment('REPORTS_COLLECTIONID');
+const settingsCollectionId = String.fromEnvironment('SETTINGS_COLLECTIONID');
 const usersCollectionId = String.fromEnvironment('USERS_COLLECTIONID');
 
 final client = Client()
@@ -135,6 +136,28 @@ class _AddDobAndNameScreenState extends State<AddDobAndNameScreen> {
           collectionId: preferenceCollectionId,
           documentId: ID.unique(),
           data: {'user': userId},
+        );
+      }
+
+      // Create settings document if it doesn't exist
+      final settingsDoc = await databases.listDocuments(
+        databaseId: databaseId,
+        collectionId: settingsCollectionId,
+        queries: [
+          Query.equal('user', userId),
+        ],
+      );
+
+      if (settingsDoc.documents.isEmpty) {
+        await databases.createDocument(
+          databaseId: databaseId,
+          collectionId: settingsCollectionId,
+          documentId: ID.unique(),
+          data: {
+            'isIncognito': false,
+            'isHideName': false,
+            'user': userId,
+          },
         );
       }
 
