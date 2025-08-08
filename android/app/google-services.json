@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "559053598643",
-    "project_id": "whatever-e8381",
-    "storage_bucket": "whatever-e8381.firebasestorage.app"
+    "project_number": "663262636424",
+    "project_id": "lushh-da2df",
+    "storage_bucket": "lushh-da2df.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:559053598643:android:2994a04c1cee95a07e65c6",
+        "mobilesdk_app_id": "1:663262636424:android:7e13d81d9d27298604f23d",
         "android_client_info": {
-          "package_name": "com.example.lushh"
+          "package_name": "com.lushh.app"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBcuCctoHJLklqRNR55N4_gaeAE5nP5mtg"
+          "current_key": "AIzaSyC2EDyULgHPK1h1VJ44cEilC9jLmIsN1qc"
         }
       ],
       "services": {

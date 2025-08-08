@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../appwrite/appwrite.dart';
@@ -38,9 +39,36 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Listen for messages while the app is in the foreground
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('Got a message whilst in the foreground!');
+      print('Message data: ${message.data}');
+      _handleNotification(message.data);
+    });
+
+    // Handle a tap on a notification when the app is in the background
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print('User tapped a notification while in the background!');
+      _handleNotification(message.data);
+    });
+
     _pageController = PageController(initialPage: _currentIndex);
     _fetchUnreadNotifications();
     _fetchUnreadChats();
+  }
+
+  // A helper function to handle different types of notifications
+  void _handleNotification(Map<String, dynamic> data) {
+    final notificationType = data['type'];
+
+    if (notificationType == 'new_invitation') {
+      print('New invitation received from user: ${data['senderName']}');
+      // Show an in-app banner or navigate
+    } else if (notificationType == 'match') {
+      print('It\'s a match! You can now chat with ${data['partnerName']}');
+      // Navigate to the new chat screen
+    }
   }
 
   @override
