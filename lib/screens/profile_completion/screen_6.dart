@@ -3,18 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:lushh/appwrite/appwrite.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:lushh/screens/profile_completion/screen_7.dart';
+import 'package:lushh/services/config_service.dart';
 
-// Import all ids from .env using String.fromEnvironment
-const String databaseId = String.fromEnvironment('DATABASE_ID');
-const String completionStatusCollectionId = String.fromEnvironment(
-  'COMPLETION_STATUS_COLLECTIONID',
-);
-const String preferenceCollectionID = String.fromEnvironment(
-  'PREFERENCE_COLLECTIONID',
-);
-const String hobbiesCollectionID = String.fromEnvironment(
-  'HOBBIES_COLLECTIONID',
-);
+// Import all ids using ConfigService
+final databaseId = ConfigService().get('DATABASE_ID');
+final completionStatusCollectionId = ConfigService().get('COMPLETION_STATUS_COLLECTIONID');
+final preferenceCollectionID = ConfigService().get('PREFERENCE_COLLECTIONID');
+final hobbiesCollectionID = ConfigService().get('HOBBIES_COLLECTIONID');
 
 class AddPreferredMaxDistAndHobbiesScreen extends StatefulWidget {
   const AddPreferredMaxDistAndHobbiesScreen({super.key});
@@ -181,226 +176,179 @@ class _AddPreferredMaxDistAndHobbiesScreenState
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = Colors.black;
-    final accentColor = const Color(0xFF6D4B86);
-
+    // styling only — logic unchanged
+    final accentColor = const Color(0xFF9B4D96); // match age screen accent
     return Scaffold(
-      backgroundColor: const Color(0xfff7f7f7),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-        title: const Text(
-          "Preferences",
-          style: TextStyle(
-            color: Colors.black,
-            fontFamily: 'SF Pro Display',
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-            letterSpacing: -0.5,
+      // full-screen gradient like the age-screen
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF6D4B86), Color(0xFF9B4D96), Color(0xFFE573A0)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
         ),
-        centerTitle: true,
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Set your max preferred distance",
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: themeColor,
-                              fontFamily: 'SF Pro Display',
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            "Choose how far away you want to see matches (in km).",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.black.withOpacity(0.7),
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    // Distance slider
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 24,
-                        ),
-                        decoration: BoxDecoration(
+        child: SafeArea(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator(color: Colors.white))
+              : Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 12),
+                      const Text(
+                        "Preferences",
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                          letterSpacing: -0.5,
                         ),
-                        child: Column(
-                          children: [
-                            Text(
-                              "${_selectedMaxDistance} km",
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                                color: accentColor,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                            SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                activeTrackColor: accentColor,
-                                inactiveTrackColor: accentColor.withOpacity(
-                                  0.2,
-                                ),
-                                thumbColor: accentColor,
-                                overlayColor: accentColor.withOpacity(0.15),
-                                trackHeight: 5,
-                                thumbShape: const RoundSliderThumbShape(
-                                  enabledThumbRadius: 13,
-                                ),
-                              ),
-                              child: Slider(
-                                value: _selectedMaxDistance.toDouble(),
-                                min: minDistance.toDouble(),
-                                max: maxDistance.toDouble(),
-                                divisions: maxDistance - minDistance,
-                                label: "${_selectedMaxDistance} km",
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedMaxDistance = value.round();
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
+                        textAlign: TextAlign.center,
                       ),
-                    ),
-                    const SizedBox(height: 36),
-                    // Hobbies header
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Pick up to 5 preferred hobbies",
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: themeColor,
-                              fontFamily: 'SF Pro Display',
-                              letterSpacing: -0.5,
+                      const SizedBox(height: 8),
+                      Text(
+                        "Choose how far away you want to see matches (in km).",
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 26),
+
+                      // Glassmorphic card — contains both slider + hobbies (keeps flow consistent with age screen)
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(28),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.12),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Distance display + slider
+                                const Text(
+                                  "Max preferred distance",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  "${_selectedMaxDistance} km",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Slider(
+                                  value: _selectedMaxDistance.toDouble(),
+                                  min: minDistance.toDouble(),
+                                  max: maxDistance.toDouble(),
+                                  divisions: maxDistance - minDistance,
+                                  activeColor: Colors.white,
+                                  inactiveColor: Colors.white.withOpacity(0.3),
+                                  label: "${_selectedMaxDistance} km",
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedMaxDistance = value.round();
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 22),
+
+                                // Hobbies section
+                                const Text(
+                                  "Pick up to 5 preferred hobbies",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 10,
+                                  runSpacing: 10,
+                                  children: allHobbies.map((hobby) {
+                                    final hobbyId = hobby['id'] as String;
+                                    final hobbyName = hobby['name'] as String;
+                                    final isSelected = selectedHobbyIds.contains(hobbyId);
+                                    return GestureDetector(
+                                      onTap: () => _toggleHobby(hobbyId),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 180),
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: isSelected ? Colors.white : Colors.white.withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(color: Colors.white.withOpacity(isSelected ? 0.0 : 0.25)),
+                                        ),
+                                        child: Text(
+                                          hobbyName,
+                                          style: TextStyle(
+                                            color: isSelected ? accentColor : Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                                const SizedBox(height: 8),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 10),
-                          Text(
-                            "Select hobbies that best match your interests.",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.black.withOpacity(0.7),
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    // Hobbies chips
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: allHobbies.map((hobby) {
-                          final hobbyId = hobby['id'] as String;
-                          final hobbyName = hobby['name'] as String;
-                          final isSelected = selectedHobbyIds.contains(hobbyId);
-                          return ChoiceChip(
-                            label: Text(
-                              hobbyName,
-                              style: TextStyle(
-                                fontFamily: 'SF Pro Display',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                                color: isSelected ? Colors.white : accentColor,
-                              ),
-                            ),
-                            selected: isSelected,
-                            onSelected: (_) => _toggleHobby(hobbyId),
-                            selectedColor: accentColor,
-                            backgroundColor: Colors.grey.shade200,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              side: BorderSide(
-                                color: isSelected
-                                    ? accentColor
-                                    : Colors.grey.shade300,
-                                width: 1.2,
-                              ),
-                            ),
-                            elevation: isSelected ? 2 : 0,
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    const SizedBox(height: 48),
-                    // Submit button
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: SizedBox(
+
+                      const SizedBox(height: 18),
+
+                      // Continue button styled like age-range screen
+                      SizedBox(
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
                           onPressed: _submit,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: accentColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            elevation: 3,
+                            backgroundColor: Colors.white,
+                            foregroundColor: accentColor,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            elevation: 6,
                           ),
                           child: const Text(
                             "Continue",
                             style: TextStyle(
                               fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: 'SF Pro Display',
-                              letterSpacing: 0.1,
-                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 32),
-                  ],
+
+                      const SizedBox(height: 12),
+                    ],
+                  ),
                 ),
-              ),
-            ),
+        ),
+      ),
     );
   }
 }

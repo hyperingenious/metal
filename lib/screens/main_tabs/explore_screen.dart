@@ -1,241 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:lushh/appwrite/appwrite.dart';
+import 'package:lushh/screens/main_tabs/components/explore_app_bar.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
 import 'dart:math'; // Added for distance calculation
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lushh/widgets/expandable_prompts.dart';
+import 'package:lushh/services/config_service.dart';
+import 'package:lushh/screens/main_tabs/components/bio_section.dart';
+import 'package:lushh/screens/main_tabs/components/interests_section.dart';
+import 'package:lushh/screens/main_tabs/components/details_section.dart';
+import 'package:lushh/screens/main_tabs/components/primary_gradient_button.dart';
+import 'package:lushh/screens/main_tabs/components/additional_images_section.dart';
+import 'package:lushh/screens/main_tabs/components/swipeable_profile_card.dart';
+import 'package:lushh/constants/prompt_questions.dart';
 
-// Environment variables for collections
-const databaseId = String.fromEnvironment('DATABASE_ID');
-const connectionsCollectionId = String.fromEnvironment(
-  'CONNECTIONS_COLLECTIONID',
-);
-const locationCollectionId = String.fromEnvironment('LOCATION_COLLECTIONID');
-const updateNowCollectionId = String.fromEnvironment('UPDATE_NOW_COLLECTIONID');
-
-// Questions for prompts based on gender
-final List<Map<String, dynamic>> _femaleQuestions = [
-  {
-    'question': 'I know I\'ve found a good match when…',
-    'options': [
-      'The conversation flows naturally',
-      'He makes me laugh',
-      'I feel a genuine connection',
-      'He\'s a good listener',
-      'We both forget to check our phones',
-      'He\'s a good friend',
-      'He challenges me to be a better person',
-      'We have the same sense of humor',
-      'He makes me feel safe',
-      'We have a mutual respect',
-    ],
-  },
-  {
-    'question': 'A quality I admire most on a date is…',
-    'options': [
-      'Their ability to listen',
-      'Their confidence',
-      'Their thoughtfulness',
-      'Their sense of humor',
-      'Their manners',
-      'Their ability to make me feel comfortable',
-      'Their respect for my time',
-      'Their ability to be present',
-      'Their kindness',
-      'Their honesty',
-    ],
-  },
-  {
-    'question': 'The best way to get to know me is…',
-    'options': [
-      'Over a good meal',
-      'By asking me about my passions',
-      'By having a deep conversation',
-      'By just letting me be myself',
-      'By seeing me with my friends',
-      'By sharing a new experience with me',
-      'Over a cup of tea',
-      'By asking me about my dreams',
-      'By just hanging out',
-      'By trying a new cafe',
-    ],
-  },
-  {
-    'question': 'My communication style is best described as…',
-    'options': [
-      'Direct and honest',
-      'I prefer to talk things out',
-      'I\'m a good listener',
-      'I\'m a good texter',
-      'I\'m a great communicator',
-      'I\'m a good listener, but I\'m also a great talker',
-      'I\'m a good texter, but I prefer to talk on the phone',
-      'I\'m a good communicator, but I\'m also a good listener',
-      'I\'m a good communicator, but I\'m also a good texter',
-      'I\'m a good communicator, but I also like to have fun',
-    ],
-  },
-  {
-    'question': 'My perfect first date would be…',
-    'options': [
-      'A long walk in a park',
-      'Coffee at a local cafe',
-      'Trying out a new restaurant or bar',
-      'A quiet dinner where we can talk',
-      'Getting an ice cream',
-      'An adventurous road trip to a new city',
-      'Bowling or mini golf',
-      'A comedy show',
-      'Going to a live music show',
-      'A picnic',
-    ],
-  },
-  {
-    'question': 'The most romantic gesture to me is…',
-    'options': [
-      'A thoughtful text after the date',
-      'A handwritten note',
-      'A surprise visit',
-      'A surprise trip',
-      'A home-cooked meal',
-      'A thoughtful gift',
-      'A long walk with a good conversation',
-      'A simple hug',
-      'A compliment',
-      'A great date',
-    ],
-  },
-  {
-    'question': 'My biggest pet peeve is…',
-    'options': [
-      'When someone is on their phone during a date',
-      'A messy car',
-      'Being late',
-      'Rude waiters',
-      'When someone chews with their mouth open',
-      'A person with no manners',
-      'When someone is a bad driver',
-      'A person who talks too much about themselves',
-      'Being ignored',
-      'When someone is a bad listener',
-    ],
-  },
-];
-
-final List<Map<String, dynamic>> _maleQuestions = [
-  {
-    'question': 'The quality I admire most in a relationship is…',
-    'options': [
-      'Mutual respect',
-      'Unconditional support',
-      'Shared laughter',
-      'Honesty and open communication',
-      'Trust and loyalty',
-      'A sense of adventure',
-      'The ability to grow together',
-      'Thoughtfulness',
-      'Emotional intelligence',
-      'Good communication',
-    ],
-  },
-  {
-    'question': 'I feel most connected when we are…',
-    'options': [
-      'Having a deep conversation over coffee',
-      'Laughing at something completely silly',
-      'Exploring a new place together',
-      'Cooking a meal as a team',
-      'Just being quiet and comfortable in each other\'s presence',
-      'Talking about our dreams and goals',
-      'Sharing our favorite music with each other',
-      'Debating a movie\'s plot for hours',
-      'Working on a project together',
-      'Talking on a long drive',
-    ],
-  },
-  {
-    'question': 'I\'m looking for a partner who can challenge me to…',
-    'options': [
-      'Step outside my comfort zone',
-      'Try new things',
-      'Think more deeply about things',
-      'Be more adventurous',
-      'Improve my communication skills',
-      'Be more emotionally intelligent',
-      'Read more books',
-      'Pursue my dreams',
-      'Be a better version of myself',
-    ],
-  },
-  {
-    'question': 'The most romantic thing I can do for someone is…',
-    'options': [
-      'Making them a home-cooked meal',
-      'Planning a surprise trip or adventure',
-      'Making them a cup of tea',
-      'Showing them I\'m listening by remembering the little things',
-      'Supporting them when they\'re pursuing a dream',
-      'Giving them a relaxing massage after a long day',
-      'Bringing them flowers just because',
-      'A romantic date',
-      'Sending a thoughtful text just to say I\'m thinking of them',
-      'Telling them how I feel',
-    ],
-  },
-  {
-    'question': 'The perfect gift I could receive is…',
-    'options': [
-      'A thoughtful, handwritten note',
-      'An experience, not a thing',
-      'Tickets to a sports game or a concert',
-      'Something that shows you were really listening',
-      'A surprise weekend trip',
-      'A great book',
-      'A great meal',
-      'Something to help me with my hobby',
-      'A day of no responsibilities',
-      'Anything handmade',
-    ],
-  },
-  {
-    'question': 'My ideal way to be comforted after a bad day is…',
-    'options': [
-      'A long, quiet walk',
-      'A hug and a quiet movie night',
-      'A great home-cooked meal',
-      'A little bit of space to myself',
-      'To talk it out with a good listener',
-      'A good workout',
-      'A surprise',
-      'A good beer',
-      'A long drive with some good music',
-      'A cup of tea',
-    ],
-  },
-  {
-    'question': 'A perfect Friday night looks like…',
-    'options': [
-      'A low-key dinner with friends',
-      'A great movie on the couch with some comfort food',
-      'Quality time with parents or siblings',
-      'Trying out a new restaurant or bar',
-      'Getting a good workout in after a long week',
-      'A board game night with a few close friends',
-      'Going to a live music show',
-      'An adventurous road trip to a new place',
-      'Grilling and chilling with a beer',
-      'Unplugging and enjoying some peace and quiet',
-      'A spontaneous trip to the mountains',
-    ],
-  },
-];
+// Replace environment variables with ConfigService
+final projectId = ConfigService().get('PROJECT_ID');
+final databaseId = ConfigService().get('DATABASE_ID');
+final connectionsCollectionId = ConfigService().get('CONNECTIONS_COLLECTIONID');
+final locationCollectionId = ConfigService().get('LOCATION_COLLECTIONID');
+final updateNowCollectionId = ConfigService().get('UPDATE_NOW_COLLECTIONID');
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -278,12 +68,6 @@ class _ExploreScreenState extends State<ExploreScreen>
   // Scroll controller for scrolling to top
   final ScrollController _scrollController = ScrollController();
 
-  // Add new variables for card stack
-  static const int _maxVisibleCards = 3;
-  static const double _cardSpacing = 8.0;
-  static const double _cardScale = 0.95;
-  static const double _cardOpacity = 0.8;
-
   // Use different keys for different OS for native localstorage separation
   static String get _localProfilesKey {
     if (Platform.isIOS) return 'explore_profiles_ios';
@@ -325,10 +109,6 @@ class _ExploreScreenState extends State<ExploreScreen>
         });
       }
     });
-    // Remove this line - we'll call it after profiles are loaded
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   _fetchAndSetDistance();
-    // });
   }
 
   @override
@@ -435,59 +215,6 @@ class _ExploreScreenState extends State<ExploreScreen>
     return false;
   }
 
-  /// Filter out profiles that have existing connections with the current user
-  Future<List<Map<String, dynamic>>> _filterProfilesWithExistingConnections(
-    List<Map<String, dynamic>> profiles,
-  ) async {
-    try {
-      // Get current user id
-      final user = await account.get();
-      final String currentUserId = user.$id;
-
-      // Get all connections where current user is either sender or receiver
-      final connectionsResult = await databases.listDocuments(
-        databaseId: databaseId,
-        collectionId: connectionsCollectionId,
-        queries: [
-          Query.or([
-            Query.equal('senderId', currentUserId),
-            Query.equal('receiverId', currentUserId),
-          ]),
-        ],
-      );
-
-      // Extract all connected user IDs
-      final Set<String> connectedUserIds = {};
-      for (final doc in connectionsResult.documents) {
-        final senderId = doc.data['senderId']?.toString();
-        final receiverId = doc.data['receiverId']?.toString();
-
-        // Add the other user's ID (not the current user's)
-        if (senderId == currentUserId && receiverId != null) {
-          connectedUserIds.add(receiverId);
-        } else if (receiverId == currentUserId && senderId != null) {
-          connectedUserIds.add(senderId);
-        }
-      }
-
-      // Filter out profiles that have connections
-      final filteredProfiles = profiles.where((profile) {
-        final profileUserId = profile['userId']?.toString();
-        return profileUserId != null &&
-            !connectedUserIds.contains(profileUserId);
-      }).toList();
-
-      debugPrint(
-        'Filtered ${profiles.length - filteredProfiles.length} profiles with existing connections',
-      );
-      return filteredProfiles;
-    } catch (e) {
-      debugPrint('Error filtering profiles with connections: $e');
-      // If there's an error, return the original profiles to avoid blocking the UI
-      return profiles;
-    }
-  }
-
   Future<void> _saveProfilesToLocal(
     List<Map<String, dynamic>> profiles,
     int page,
@@ -509,6 +236,7 @@ class _ExploreScreenState extends State<ExploreScreen>
         final jwt = await account.createJWT();
         _jwt = jwt.jwt;
       }
+
       final response = await http.get(
         Uri.parse(
           'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/profiles/random-simple',
@@ -556,11 +284,6 @@ class _ExploreScreenState extends State<ExploreScreen>
     } catch (e) {
       debugPrint('Error updating cache in background: $e');
     }
-  }
-
-  // No longer remove profile from local on skip
-  Future<void> _removeProfileFromLocal(int index) async {
-    // No-op for skip/undo logic
   }
 
   Future<void> _fetchProfiles({required int page, bool reset = false}) async {
@@ -968,26 +691,6 @@ class _ExploreScreenState extends State<ExploreScreen>
     }
   }
 
-  // Helper to get icon for profession type
-  IconData _getProfessionIcon(String? professionType) {
-    switch (professionType?.toLowerCase()) {
-      case 'student':
-        return Icons.school;
-      case 'engineer':
-        return Icons.engineering;
-      case 'designer':
-        return Icons.brush;
-      case 'doctor':
-        return Icons.local_hospital;
-      case 'artist':
-        return Icons.palette;
-      case 'other':
-        return Icons.work_outline;
-      default:
-        return Icons.work_outline;
-    }
-  }
-
   Future<void> _fetchAndSetDistance() async {
     if (_profiles.isEmpty || _currentProfileIndex >= _profiles.length) return;
     setState(() {
@@ -1357,374 +1060,174 @@ class _ExploreScreenState extends State<ExploreScreen>
     );
   }
 
-  // Helper method to build a single card
-  Widget _buildProfileCard(Map<String, dynamic> profile, int index, {
-    double? dragOffset,
-    double? rotation,
-    bool isTopCard = false,
-  }) {
-    final biodata = profile['biodata'] is Map<String, dynamic>
-        ? profile['biodata']
-        : <String, dynamic>{};
-    final location = profile['location'] is Map<String, dynamic>
-        ? profile['location']
-        : <String, dynamic>{};
-    final user = biodata['user'] is Map<String, dynamic>
-        ? biodata['user']
-        : <String, dynamic>{};
-    final String name = user['name']?.toString() ?? 'Unknown';
-    final String? gender = biodata['gender']?.toString();
-    final String? bio = biodata['bio']?.toString();
-    final String? image =
-        (profile['images'] != null && profile['images'].isNotEmpty)
-        ? profile['images'][0].toString()
-        : null;
-    final List<String> additionalImages = (profile['images'] != null)
-        ? List<String>.from(profile['images'].skip(1).map((e) => e.toString()))
-        : [];
-    final String? city = location['city']?.toString();
-    final String? state = location['state']?.toString();
-    final String? country = location['country']?.toString();
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
 
-    // Get age from dob
-    final String? dobString = biodata['dob']?.toString();
-    final int? age = _calculateAgeFromDob(dobString);
-
-    // Get profession info
-    final String? professionType = biodata['profession_name']?.toString();
-    final String? professionSubtype = biodata['sub_type']?.toString();
-
-    return Container(
-      margin: EdgeInsets.only(
-        bottom: 24,
-        left: index * _cardSpacing,
-        right: index * _cardSpacing,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Image with bottom gradient overlay
-          ClipRRect(
-            borderRadius: BorderRadius.circular(18),
-            child: SizedBox(
-              width: double.infinity,
-              height: MediaQuery.of(context).size.height * 0.8,
-              child: Stack(
-                children: [
-                  image != null && image.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: image,
-                          width: double.infinity,
-                          height: MediaQuery.of(context).size.height * 0.8,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            width: double.infinity,
-                            height: 420,
-                            color: Colors.grey[300],
-                            child: const Icon(
-                              Icons.person,
-                              size: 80,
-                              color: Colors.white,
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            width: double.infinity,
-                            height: 420,
-                            color: Colors.grey[300],
-                            child: const Icon(
-                              Icons.person,
-                              size: 80,
-                              color: Colors.white,
-                            ),
-                          ),
-                        )
-                      : Container(
-                          width: double.infinity,
-                          height: 420,
-                          color: Colors.grey[300],
-                          child: const Icon(
-                            Icons.person,
-                            size: 80,
-                            color: Colors.white,
-                          ),
-                        ),
-                  // Gradient overlay at the bottom
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.transparent,
-                              Color.fromARGB(120, 0, 0, 0),
-                              Color.fromARGB(180, 0, 0, 0),
-                            ],
-                            stops: [0.0, 0.6, 0.85, 1.0],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+    if (_isLoading) {
+      return Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFF8F6FA), Color(0xFFECE9F1)],
             ),
           ),
-          // Name, age, profession and invite button at bottom left
-          Positioned(
-            left: 16,
-            bottom: 32,
+          child: Center(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  '$name, ${age != null ? age : "--"}',
-                  style: const TextStyle(
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF8B4DFF).withOpacity(0.3),
+                        const Color(0xFF8B4DFF).withOpacity(0.1),
+                      ],
+                    ),
+                  ),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF8B4DFF),
+                      strokeWidth: 3,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Finding amazing people...',
+                  style: TextStyle(
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.w600,
-                    fontSize: 20,
-                    color: Colors.white,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black38,
-                        blurRadius: 6,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
+                    fontSize: 18,
+                    color: Color(0xFF3B2357),
                   ),
                 ),
-                if (professionType != null && professionType.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _getProfessionIcon(professionType),
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        professionType[0].toUpperCase() +
-                            professionType.substring(1),
-                        style: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w500,
-                          fontSize: 16,
-                          color: Colors.white,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black38,
-                              blurRadius: 4,
-                              offset: Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (professionSubtype != null &&
-                          professionSubtype.isNotEmpty) ...[
-                        const SizedBox(width: 4),
-                        Text(
-                          '• ${professionSubtype}',
-                          style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w400,
-                            fontSize: 14,
-                            color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black38,
-                                blurRadius: 4,
-                                offset: Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-                if (isTopCard) ...[
-                  const SizedBox(height: 12),
-                  GestureDetector(
-                    onTap: _sendingInvite ? null : _sendInvite,
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF8B4DFF),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.12),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: _sendingInvite
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(
-                                PhosphorIconsBold.userPlus,
-                                color: Colors.white,
-                                size: 28,
-                              ),
-                      ),
-                    ),
-                  ),
-                ],
               ],
-            ),
-          ),
-          // Loading indicator for next batch
-          if (_fetchingNextBatch && isTopCard)
-            Positioned(
-              right: 16,
-              bottom: 16,
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // Build the card stack
-  Widget _buildCardStack() {
-    if (_profiles.isEmpty) return const SizedBox.shrink();
-
-    final List<Widget> cards = [];
-    final int startIndex = _currentProfileIndex;
-    final int endIndex = startIndex + _maxVisibleCards;
-    
-    // Build cards in reverse order so the current card is on top
-    for (int i = _maxVisibleCards - 1; i >= 0; i--) {
-      final int profileIndex = startIndex + i;
-      if (profileIndex >= _profiles.length) continue;
-      
-      final profile = _profiles[profileIndex];
-      final bool isTopCard = i == 0;
-      
-      // Calculate transform for each card
-      double scale = 1.0;
-      double translateY = 0.0;
-      
-      if (i > 0) {
-        scale = _cardScale - (i * 0.05);
-        translateY = i * 4.0;
-      }
-      
-      // Apply drag transform only to top card
-      double dragOffset = 0.0;
-      double rotation = 0.0;
-      
-      if (isTopCard) {
-        dragOffset = _dragDx;
-        rotation = (_dragDx / MediaQuery.of(context).size.width) * 0.21;
-      }
-      
-      cards.add(
-        Positioned.fill(
-          child: Transform.translate(
-            offset: Offset(
-              dragOffset,
-              translateY,
-            ),
-            child: Transform.scale(
-              scale: scale,
-              child: Transform.rotate(
-                angle: rotation,
-                child: _buildProfileCard(
-                  profile,
-                  i,
-                  dragOffset: dragOffset,
-                  rotation: rotation,
-                  isTopCard: isTopCard,
-                ),
-              ),
             ),
           ),
         ),
       );
     }
-    
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.8 + 24,
-      child: Stack(
-        children: cards,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
 
     if (_hasError) {
       return Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                "Failed to load profiles.",
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 18,
-                  color: Color(0xFF3B2357),
-                ),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFF8F6FA), Color(0xFFECE9F1)],
+            ),
+          ),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      PhosphorIconsRegular.wifiSlash,
+                      color: Color(0xFF8B4DFF),
+                      size: 48,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  const Text(
+                    "Oops! Something went wrong",
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 22,
+                      color: Color(0xFF3B2357),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    "We couldn't load profiles right now. Please check your connection and try again.",
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w400,
+                      fontSize: 15,
+                      color: Color(0xFF6D4B86),
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  Container(
+                    width: double.infinity,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF8B4DFF), Color(0xFFA855FF)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF8B4DFF).withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        await _robustFetchProfiles(page: 0, reset: true);
+                        _preloadNextProfiles();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            PhosphorIconsBold.arrowClockwise,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            "Try Again",
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () async {
-                  await _robustFetchProfiles(page: 0, reset: true);
-                  _preloadNextProfiles();
-                },
-                child: const Text(
-                  "Retry",
-                  style: TextStyle(fontFamily: 'Poppins'),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       );
@@ -1733,67 +1236,83 @@ class _ExploreScreenState extends State<ExploreScreen>
     // Only show "no more profiles" when we've confirmed no profiles from both local and server
     if (_noMoreProfiles && _profiles.isEmpty && !_isLoading) {
       return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: AppBar(
-            backgroundColor: Colors.white,
-            elevation: 0,
-            automaticallyImplyLeading: false,
-            titleSpacing: 16,
-            title: const Text(
-              'Lushh',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w700,
-                fontSize: 22,
-                color: Color(0xFF2D1B3A),
-              ),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF8B4DFF), Color(0xFFECE9F1)],
             ),
-            actions: [
-              IconButton(
-                icon: const Icon(
-                  PhosphorIconsRegular.gearSix,
-                  color: Color(0xFF6D4B86),
-                  size: 22,
-                ),
-                onPressed: () {
-                  Navigator.pushNamed(context, '/settings');
-                },
-                splashRadius: 22,
-              ),
-              const SizedBox(width: 8),
-            ],
           ),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                "No more profiles found.",
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 18,
-                  color: Color(0xFF3B2357),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 32.0),
-                child: Text(
-                  "Try expanding your min/max age or max distance in settings.",
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w400,
-                    fontSize: 15,
-                    color: Color(0xFF6D4B86),
+          child: SafeArea(
+            child: Column(
+              children: [
+                // Modern App Bar
+                ExploreAppBar(
+  canUndo: _profileHistory.isNotEmpty,
+  onUndo: _undoLastSkip,
+  onSettings: () {
+    Navigator.pushNamed(context, '/settings');
+  },
+),
+                // Content
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 140,
+                            height: 140,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 24,
+                                  offset: const Offset(0, 12),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              PhosphorIconsRegular.userCircle,
+                              color: Color(0xFF8B4DFF),
+                              size: 64,
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          const Text(
+                            "You've seen everyone!",
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 24,
+                              color: Color(0xFF3B2357),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            "Try expanding your age range or distance in settings to discover more amazing people.",
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w400,
+                              fontSize: 16,
+                              color: Color(0xFF6D4B86),
+                              height: 1.5,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  textAlign: TextAlign.center,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
@@ -1838,9 +1357,14 @@ class _ExploreScreenState extends State<ExploreScreen>
     final String name = user['name']?.toString() ?? 'Unknown';
     final String? gender = biodata['gender']?.toString();
     final String? bio = biodata['bio']?.toString();
+    final String? image =
+        (profile['images'] != null && profile['images'].isNotEmpty)
+        ? profile['images'][0].toString()
+        : null;
     final List<String> additionalImages = (profile['images'] != null)
         ? List<String>.from(profile['images'].skip(1).map((e) => e.toString()))
         : [];
+
     final String? city = location['city']?.toString();
     final String? state = location['state']?.toString();
     final String? country = location['country']?.toString();
@@ -1872,8 +1396,8 @@ class _ExploreScreenState extends State<ExploreScreen>
 
     if (promptsRaw.isNotEmpty && gender != null) {
       final questions = gender.toLowerCase() == 'male'
-          ? _maleQuestions
-          : _femaleQuestions;
+    ? maleQuestions
+    : femaleQuestions;
 
       for (int i = 0; i < 7 && i < promptsRaw.length; i++) {
         final answer = promptsRaw[i];
@@ -1889,531 +1413,260 @@ class _ExploreScreenState extends State<ExploreScreen>
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(56),
-        child: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          titleSpacing: 16,
-          title: const Text(
-            'Lushh',
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.w700,
-              fontSize: 22,
-              color: Color(0xFF2D1B3A),
-            ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF8F6FA), Color(0xFFECE9F1)],
           ),
-          actions: [
-            if (_profileHistory.isNotEmpty)
-              IconButton(
-                icon: const Icon(
-                  PhosphorIconsRegular.arrowUUpLeft,
-                  color: Colors.black,
-                  size: 28,
-                ),
-                onPressed: _undoLastSkip,
-                splashRadius: 22,
-                tooltip: "Back",
-              ),
-            IconButton(
-              icon: const Icon(
-                PhosphorIconsRegular.gearSix,
-                color: Color(0xFF6D4B86),
-                size: 22,
-              ),
-              onPressed: () {
-                Navigator.pushNamed(context, '/settings');
-              },
-              splashRadius: 22,
-            ),
-            const SizedBox(width: 8),
-          ],
         ),
-      ),
-      body: SingleChildScrollView(
-        controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: DefaultTextStyle(
-          style: const TextStyle(fontFamily: 'Poppins'),
+        child: SafeArea(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Card Stack with swipe functionality
-              GestureDetector(
-                onHorizontalDragStart: (details) {
-                  if (_isSwiping) return;
-                  setState(() {
-                    _dragDx = 0.0;
-                  });
-                },
-                onHorizontalDragUpdate: (details) {
-                  if (_isSwiping) return;
-                  setState(() {
-                    _dragDx += details.delta.dx;
-                  });
-                },
-                onHorizontalDragEnd: (details) {
-                  if (_isSwiping) return;
-                  final velocity = details.primaryVelocity ?? 0.0;
-                  // Only consider a swipe if the velocity or drag distance is significant
-                  if (velocity.abs() > 200 || _dragDx.abs() > 80) {
-                    setState(() {
-                      _isSwiping = true;
-                    });
-                    // Animate off screen in the swipe direction
-                    final isLeft = (_dragDx < 0) || (velocity < 0);
-
-                    // For a tilted swipe, we animate both translation and rotation.
-                    // We'll rotate a bit (e.g. 12 degrees) in the direction of the swipe.
-                    final double endRotation = isLeft
-                        ? -0.21
-                        : 0.21; // ~12 degrees in radians
-
-                    _swipeAnimation =
-                        Tween<Offset>(
-                          begin: Offset(
-                            _dragDx / MediaQuery.of(context).size.width,
-                            0,
-                          ),
-                          end: Offset(
-                            isLeft ? -2.0 : 2.0,
-                            0.4,
-                          ), // add a bit of vertical movement
-                        ).animate(
-                          CurvedAnimation(
-                            parent: _swipeController,
-                            curve: Curves.easeOut,
-                          ),
-                        );
-                    _swipeRotationAnimation =
-                        Tween<double>(
-                          begin:
-                              (_dragDx / MediaQuery.of(context).size.width) *
-                              0.21,
-                          end: endRotation,
-                        ).animate(
-                          CurvedAnimation(
-                            parent: _swipeController,
-                            curve: Curves.easeOut,
-                          ),
-                        );
-                    _swipeController.forward();
-                  } else {
-                    // Animate back to center
-                    _swipeAnimation =
-                        Tween<Offset>(
-                          begin: Offset(
-                            _dragDx / MediaQuery.of(context).size.width,
-                            0,
-                          ),
-                          end: Offset.zero,
-                        ).animate(
-                          CurvedAnimation(
-                            parent: _swipeController,
-                            curve: Curves.easeOut,
-                          ),
-                        );
-                    _swipeRotationAnimation =
-                        Tween<double>(
-                          begin:
-                              (_dragDx / MediaQuery.of(context).size.width) *
-                              0.21,
-                          end: 0.0,
-                        ).animate(
-                          CurvedAnimation(
-                            parent: _swipeController,
-                            curve: Curves.easeOut,
-                          ),
-                        );
-                    _swipeController.forward().then((_) {
-                      setState(() {
-                        _dragDx = 0.0;
-                        _isSwiping = false;
-                      });
-                    });
-                  }
-                },
-                child: _buildCardStack(),
-              ),
-              // Bio Section
-              const Align(
-                alignment: Alignment.center,
-                child: Text(
-                  "Bio",
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                    color: Color(0xFF3B2357),
-                  ),
-                  textAlign: TextAlign.center,
+              // Modern App Bar with floating effect
+              Container(
+                margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10.0),
-                child: Text(
-                  bio ?? "No bio provided.",
-                  textAlign: TextAlign.left,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 21,
-                    color: Color(0xFF3B2357),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 22),
-              // About me Section
-              const Text(
-                "About me",
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 18,
-                  color: Color(0xFF3B2357),
-                ),
-              ),
-              const SizedBox(height: 10),
-              hobbies.isNotEmpty
-                  ? Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: hobbies.map<Widget>((hobby) {
-                        final String hobbyName =
-                            hobby is Map && hobby['hobby_name'] != null
-                            ? hobby['hobby_name'].toString()
-                            : '';
-                        final String hobbyCategory =
-                            hobby is Map && hobby['hobby_category'] != null
-                            ? hobby['hobby_category'].toString()
-                            : '';
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8F6FA),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            hobbyName.isNotEmpty
-                                ? hobbyName[0].toUpperCase() +
-                                      hobbyName.substring(1)
-                                : hobbyCategory,
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w500,
-                              fontSize: 14,
-                              color: Color(0xFF6D4B86),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    )
-                  : const Text(
-                      "No hobbies listed.",
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w400,
-                        fontSize: 13,
-                        color: Color(0xFF6D4B86),
-                      ),
-                    ),
-              // Height Section (below About me)
-              if (heightDisplay != null && heightDisplay.isNotEmpty) ...[
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    const Icon(
-                      PhosphorIconsRegular.ruler,
-                      color: Color(0xFF6D4B86),
-                      size: 18,
-                    ),
-                    const SizedBox(width: 7),
-                    Text(
-                      "Height: $heightDisplay",
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w500,
-                        fontSize: 15,
-                        color: Color(0xFF3B2357),
-                      ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
                     ),
                   ],
+                  border: Border.all(color: Colors.white.withOpacity(0.2)),
                 ),
-              ],
-              const SizedBox(height: 24),
-              // Location Section
-              if ((city != null && city.isNotEmpty) ||
-                  (state != null && state.isNotEmpty) ||
-                  (country != null && country.isNotEmpty))
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.center,
+                child: Row(
                   children: [
-                    if ((city != null && city.isNotEmpty) ||
-                        (state != null && state.isNotEmpty))
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.location_on,
-                              color: Color(0xFF6D4B86),
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              "Lives in ${city ?? ''}${(city != null && city.isNotEmpty && state != null && state.isNotEmpty) ? ', ' : ''}${state ?? ''}",
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w500,
-                                fontSize: 12.5,
-                                color: Color(0xFF6D4B86),
-                              ),
-                            ),
-                          ],
-                        ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
                       ),
-                    if (country != null && country.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF8B4DFF), Color(0xFFA855FF)],
                         ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.place,
-                              color: Color(0xFF6D4B86),
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              "From $country",
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                              softWrap: false,
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w500,
-                                fontSize: 12.5,
-                                color: Color(0xFF6D4B86),
-                              ),
-                            ),
-                          ],
-                        ),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                  ],
-                ),
-              const SizedBox(height: 32),
-              // Additional Images Section
-              if (additionalImages.isNotEmpty)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ...additionalImages.asMap().entries.expand((entry) {
-                      final idx = entry.key;
-                      final imgUrl = entry.value;
-                      final widgets = <Widget>[];
-                      if (imgUrl == null || imgUrl.toString().isEmpty) {
-                        widgets.add(const SizedBox.shrink());
-                      } else {
-                        widgets.add(
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 20),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(18),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(18),
-                              child: SizedBox(
-                                width: double.infinity,
-                                height:
-                                    MediaQuery.of(context).size.height * 0.8,
-                                child: CachedNetworkImage(
-                                  imageUrl: imgUrl.toString(),
-                                  width: double.infinity,
-                                  height:
-                                      MediaQuery.of(context).size.height * 0.8,
-                                  fit: BoxFit.cover,
-                                  placeholder: (context, url) => Container(
-                                    width: double.infinity,
-                                    height:
-                                        MediaQuery.of(context).size.height *
-                                        0.8,
-                                    color: Colors.grey[300],
-                                    child: const Icon(
-                                      Icons.broken_image,
-                                      size: 80,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  errorWidget: (context, url, error) =>
-                                      Container(
-                                        width: double.infinity,
-                                        height:
-                                            MediaQuery.of(context).size.height *
-                                            0.8,
-                                        color: Colors.grey[300],
-                                        child: const Icon(
-                                          Icons.broken_image,
-                                          size: 80,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                      // Insert prompts after the second image (index 1)
-                      if (idx == 1 && promptAnswers.isNotEmpty) {
-                        widgets.add(ExpandablePrompts(prompts: promptAnswers));
-                      }
-                      return widgets;
-                    }).toList(),
-                  ],
-                ),
-              // If there are less than 2 images, show prompts after the last image
-              if (additionalImages.length < 2 && promptAnswers.isNotEmpty)
-                ExpandablePrompts(prompts: promptAnswers),
-
-              // Distance Section
-              Padding(
-                padding: const EdgeInsets.only(top: 16.0, bottom: 32.0),
-                child: Builder(
-                  builder: (context) {
-                    if (_distanceLoading) {
-                      return const Center(child: CircularProgressIndicator());
-                    } else if (_distanceError != null) {
-                      return Center(
-                        child: Text(
-                          _distanceError!,
-                          style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                            fontSize: 15,
-                            color: Color(0xFF6D4B86),
-                          ),
-                        ),
-                      );
-                    } else if (_distanceKm != null) {
-                      return Align(
-                        alignment: Alignment.bottomLeft,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.location_on,
-                              color: Color(0xFF3B2357),
-                              size: 28,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Lives ${_distanceKm!.round()} km away',
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 24,
-                                color: Color(0xFF3B2357),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
-              ),
-
-              // Add Friend Button Section
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _sendingInvite ? null : _sendInvite,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8B4DFF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 22),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(19),
-                    ),
-                    elevation: 0,
-                    shadowColor: const Color(0xFF8B4DFF).withOpacity(0.3),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (_sendingInvite)
-                        const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      else
-                        const Icon(PhosphorIconsBold.userPlus, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        _sendingInvite ? 'Sending Match...' : 'Send Match',
-                        style: const TextStyle(
+                      child: const Text(
+                        'Lushh',
+                        style: TextStyle(
                           fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                          color: Colors.white,
                         ),
                       ),
-                    ],
+                    ),
+                    const Spacer(),
+                    if (_profileHistory.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8B4DFF).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            PhosphorIconsRegular.arrowUUpLeft,
+                            color: Color(0xFF8B4DFF),
+                            size: 22,
+                          ),
+                          onPressed: _undoLastSkip,
+                          tooltip: "Back",
+                        ),
+                      ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6D4B86).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(
+                          PhosphorIconsRegular.gearSix,
+                          color: Color(0xFF6D4B86),
+                          size: 22,
+                        ),
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/settings');
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Main Content
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  child: DefaultTextStyle(
+                    style: const TextStyle(fontFamily: 'Poppins'),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Hero Profile Card with enhanced design
+                        GestureDetector(
+                          onHorizontalDragStart: (details) {
+                            if (_isSwiping) return;
+                            setState(() {
+                              _dragDx = 0.0;
+                            });
+                          },
+                          onHorizontalDragUpdate: (details) {
+                            if (_isSwiping) return;
+                            setState(() {
+                              _dragDx += details.delta.dx;
+                            });
+                          },
+                          onHorizontalDragEnd: (details) {
+                            if (_isSwiping) return;
+                            final velocity = details.primaryVelocity ?? 0.0;
+                            if (velocity.abs() > 200 || _dragDx.abs() > 80) {
+                              setState(() {
+                                _isSwiping = true;
+                              });
+                              final isLeft = (_dragDx < 0) || (velocity < 0);
+                              final double endRotation = isLeft ? -0.21 : 0.21;
+
+                              _swipeAnimation =
+                                  Tween<Offset>(
+                                    begin: Offset(_dragDx / screenWidth, 0),
+                                    end: Offset(isLeft ? -2.0 : 2.0, 0.4),
+                                  ).animate(
+                                    CurvedAnimation(
+                                      parent: _swipeController,
+                                      curve: Curves.easeOut,
+                                    ),
+                                  );
+                              _swipeRotationAnimation =
+                                  Tween<double>(
+                                    begin: (_dragDx / screenWidth) * 0.21,
+                                    end: endRotation,
+                                  ).animate(
+                                    CurvedAnimation(
+                                      parent: _swipeController,
+                                      curve: Curves.easeOut,
+                                    ),
+                                  );
+                              _swipeController.forward();
+                            } else {
+                              _swipeAnimation =
+                                  Tween<Offset>(
+                                    begin: Offset(_dragDx / screenWidth, 0),
+                                    end: Offset.zero,
+                                  ).animate(
+                                    CurvedAnimation(
+                                      parent: _swipeController,
+                                      curve: Curves.easeOut,
+                                    ),
+                                  );
+                              _swipeRotationAnimation =
+                                  Tween<double>(
+                                    begin: (_dragDx / screenWidth) * 0.21,
+                                    end: 0.0,
+                                  ).animate(
+                                    CurvedAnimation(
+                                      parent: _swipeController,
+                                      curve: Curves.easeOut,
+                                    ),
+                                  );
+                              _swipeController.forward().then((_) {
+                                setState(() {
+                                  _dragDx = 0.0;
+                                  _isSwiping = false;
+                                });
+                              });
+                            }
+                          },
+                          child: AnimatedBuilder(
+                            animation: _swipeController,
+                            builder: (context, child) {
+                              Offset offset;
+                              double rotation;
+                              if (_isSwiping) {
+                                offset = _swipeAnimation.value;
+                                rotation = _swipeRotationAnimation.value;
+                              } else {
+                                offset = Offset(_dragDx / screenWidth, 0);
+                                rotation = (_dragDx / screenWidth) * 0.21;
+                              }
+                              return Transform.translate(
+                                offset: Offset(
+                                  offset.dx * screenWidth,
+                                  offset.dy * screenHeight * 0.15,
+                                ),
+                                child: Transform.rotate(
+                                  angle: rotation,
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: SwipeableProfileCard(
+  image: image,
+  name: name,
+  age: age,
+  professionType: professionType,
+  professionSubtype: professionSubtype,
+  sendingInvite: _sendingInvite,
+  onInvite: _sendInvite,
+  onSwipe: () => _onSwipeLeftOrRight(removeWithAnimation: false),
+  showFetchingBadge: _fetchingNextBatch,
+),
+                          ),
+                        ),
+
+                        // Enhanced Bio Section
+                        BioSection(bio: bio),
+
+                        // Enhanced Interests Section
+InterestsSection(hobbies: hobbies),
+                        // Enhanced Details Section
+                        DetailsSection(
+                          heightDisplay: heightDisplay,
+                          city: city,
+                          state: state,
+                          country: country,
+                          distanceKm: _distanceKm,
+                          distanceLoading: _distanceLoading,
+                          distanceError: _distanceError,
+                        ),
+                        // Additional Images Section
+                                              if (additionalImages.isNotEmpty)
+  AdditionalImagesSection(
+    images: additionalImages,
+    screenHeight: screenHeight,
+    insertAfterIndexOne:
+        promptAnswers.isNotEmpty ? ExpandablePrompts(prompts: promptAnswers) : null,
+  ),
+if (additionalImages.length < 2 && promptAnswers.isNotEmpty)
+  ExpandablePrompts(prompts: promptAnswers), 
+                                                const SizedBox(height: 24),
+
+                        // Enhanced Action Button
+PrimaryGradientButton(
+  text: _sendingInvite ? 'Sending Love...' : 'Send Love ✨',
+  icon: _sendingInvite ? null : PhosphorIconsBold.heart,
+  loading: _sendingInvite,
+  onPressed: _sendingInvite ? null : _sendInvite,
+),
+                        const SizedBox(height: 40),
+                      ],
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
             ],
           ),
         ),

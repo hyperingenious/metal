@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:lushh/appwrite/appwrite.dart';
+import 'package:lushh/services/config_service.dart';
 
-const String biodataCollectionId = String.fromEnvironment(
-  'BIODATA_COLLECTIONID',
-);
-const promptsCollectionId = String.fromEnvironment('PROMPTS_COLLECTIONID');
-const String completionStatusCollectionId = String.fromEnvironment(
+// Import Appwrite IDs using ConfigService
+final biodataCollectionId = ConfigService().get('BIODATA_COLLECTIONID');
+final promptsCollectionId = ConfigService().get('PROMPTS_COLLECTIONID');
+final completionStatusCollectionId = ConfigService().get(
   'COMPLETION_STATUS_COLLECTIONID',
-); 
-
-
-
+);
 
 class IsAnsweredAllQuestionsScreen extends StatefulWidget {
   const IsAnsweredAllQuestionsScreen({Key? key}) : super(key: key);
@@ -224,25 +221,18 @@ class _IsAnsweredAllQuestionsScreenState
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    _progressAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _progressController,
-      curve: Curves.easeInOut,
-    ));
+    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
+    );
     _colorController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
     );
     _previousColor = _currentQuestionColor;
-    _colorAnimation = ColorTween(
-      begin: _previousColor,
-      end: _currentQuestionColor,
-    ).animate(CurvedAnimation(
-      parent: _colorController,
-      curve: Curves.easeInOut,
-    ));
+    _colorAnimation =
+        ColorTween(begin: _previousColor, end: _currentQuestionColor).animate(
+          CurvedAnimation(parent: _colorController, curve: Curves.easeInOut),
+        );
     _colorController.value = 1.0;
     _questionCount = 5; // <-- Set this first!
     _updateProgressAnimation(); // <-- Now it's safe to use
@@ -258,24 +248,24 @@ class _IsAnsweredAllQuestionsScreenState
 
   void _updateProgressAnimation() {
     final targetProgress = (_currentQuestionIndex + 1) / _questionCount;
-    _progressAnimation = Tween<double>(
-      begin: _progressAnimation.value,
-      end: targetProgress,
-    ).animate(CurvedAnimation(
-      parent: _progressController,
-      curve: Curves.easeInOut,
-    ));
+    _progressAnimation =
+        Tween<double>(
+          begin: _progressAnimation.value,
+          end: targetProgress,
+        ).animate(
+          CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
+        );
     _progressController.forward(from: 0.0);
   }
 
   void _animateColorTransition(Color newColor) {
-    _colorAnimation = ColorTween(
-      begin: _colorAnimation.value ?? _currentQuestionColor,
-      end: newColor,
-    ).animate(CurvedAnimation(
-      parent: _colorController,
-      curve: Curves.easeInOut,
-    ));
+    _colorAnimation =
+        ColorTween(
+          begin: _colorAnimation.value ?? _currentQuestionColor,
+          end: newColor,
+        ).animate(
+          CurvedAnimation(parent: _colorController, curve: Curves.easeInOut),
+        );
     _colorController.forward(from: 0.0);
   }
 
@@ -361,7 +351,7 @@ class _IsAnsweredAllQuestionsScreenState
   Future<void> isAnsweredAllQuestionsScreenSubmitAnswers() async {
     // Prevent double submission
     if (_isSubmitting) return;
-    
+
     setState(() {
       _isSubmitting = true;
     });
@@ -398,25 +388,25 @@ class _IsAnsweredAllQuestionsScreenState
         documentId: ID.unique(),
         data: documentData,
       );
-           // Update completion status
-        final userCompletionStatusDocument = await databases.listDocuments(
+      // Update completion status
+      final userCompletionStatusDocument = await databases.listDocuments(
+        databaseId: databaseId,
+        collectionId: completionStatusCollectionId,
+        queries: [
+          Query.equal('user', userId),
+          Query.select(['\$id']),
+        ],
+      );
+
+      if (userCompletionStatusDocument.documents.isNotEmpty) {
+        final documentId = userCompletionStatusDocument.documents[0].$id;
+        await databases.updateDocument(
           databaseId: databaseId,
           collectionId: completionStatusCollectionId,
-          queries: [
-            Query.equal('user', userId),
-            Query.select(['\$id']),
-          ],
+          documentId: documentId,
+          data: {'isAnsweredQuestions': true, 'isAllCompleted': true},
         );
-
-            if (userCompletionStatusDocument.documents.isNotEmpty) {
-          final documentId = userCompletionStatusDocument.documents[0].$id;
-          await databases.updateDocument(
-            databaseId: databaseId,
-            collectionId: completionStatusCollectionId,
-            documentId: documentId,
-            data: {'isAnsweredQuestions': true, 'isAllCompleted': true},
-          );
-        }
+      }
 
       // Show success dialog
       if (mounted) {
@@ -424,7 +414,10 @@ class _IsAnsweredAllQuestionsScreenState
           SnackBar(
             content: const Text(
               'Your answers have been saved!',
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             backgroundColor: Colors.white,
             behavior: SnackBarBehavior.floating,
@@ -439,7 +432,9 @@ class _IsAnsweredAllQuestionsScreenState
         // Redirect to main page after a short delay
         Future.delayed(const Duration(milliseconds: 1200), () {
           if (mounted) {
-            Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/main', (route) => false);
           }
         });
       }
@@ -450,7 +445,7 @@ class _IsAnsweredAllQuestionsScreenState
           _isSubmitting = false;
         });
       }
-      
+
       // Show error dialog
       if (mounted) {
         showDialog(
@@ -508,7 +503,8 @@ class _IsAnsweredAllQuestionsScreenState
       builder: (context, child) {
         final color = _colorAnimation.value ?? _currentQuestionColor;
         return Scaffold(
-          backgroundColor: _currentQuestionLightColor, // Dynamic light background
+          backgroundColor:
+              _currentQuestionLightColor, // Dynamic light background
           body: Container(
             color: _currentQuestionLightColor, // Ensure full coverage
             child: SafeArea(
@@ -542,12 +538,15 @@ class _IsAnsweredAllQuestionsScreenState
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             itemCount: options.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 12),
                             itemBuilder: (context, idx) {
                               final isSelected = selectedOption == idx;
                               return GestureDetector(
                                 onTap: () =>
-                                    isAnsweredAllQuestionsScreenSelectOption(idx),
+                                    isAnsweredAllQuestionsScreenSelectOption(
+                                      idx,
+                                    ),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 20,
@@ -562,8 +561,7 @@ class _IsAnsweredAllQuestionsScreenState
                                     ), // Fully rounded
                                     border: isSelected
                                         ? Border.all(
-                                            color:
-                                                color, // Dynamic color
+                                            color: color, // Dynamic color
                                             width: 2,
                                           )
                                         : null,
@@ -639,7 +637,8 @@ class _IsAnsweredAllQuestionsScreenState
                             children: [
                               // Background bubbles
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
                                 children: List.generate(
                                   _questionCount,
                                   (index) => Container(
@@ -665,9 +664,7 @@ class _IsAnsweredAllQuestionsScreenState
                                         borderRadius: BorderRadius.circular(12),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: color.withOpacity(
-                                              0.3,
-                                            ),
+                                            color: color.withOpacity(0.3),
                                             blurRadius: 8,
                                             offset: const Offset(0, 2),
                                           ),
@@ -682,8 +679,11 @@ class _IsAnsweredAllQuestionsScreenState
                                             width: 6,
                                             height: 6,
                                             decoration: BoxDecoration(
-                                              color: index <= _currentQuestionIndex
-                                                  ? Colors.white.withOpacity(0.8)
+                                              color:
+                                                  index <= _currentQuestionIndex
+                                                  ? Colors.white.withOpacity(
+                                                      0.8,
+                                                    )
                                                   : Colors.transparent,
                                               shape: BoxShape.circle,
                                             ),
@@ -769,9 +769,7 @@ class _IsAnsweredAllQuestionsScreenState
                             // Next/Submit button with improved design
                             GestureDetector(
                               onTap: selectedOption != null && !_isSubmitting
-                                  ? (_currentQuestionIndex <
-                                            _questionCount -
-                                                1
+                                  ? (_currentQuestionIndex < _questionCount - 1
                                         ? isAnsweredAllQuestionsScreenGoToNext
                                         : isAnsweredAllQuestionsScreenSubmitAnswers)
                                   : null,
@@ -779,15 +777,16 @@ class _IsAnsweredAllQuestionsScreenState
                                 width: 56,
                                 height: 56,
                                 decoration: BoxDecoration(
-                                  color: selectedOption != null && !_isSubmitting
+                                  color:
+                                      selectedOption != null && !_isSubmitting
                                       ? color
                                       : color.withOpacity(0.2),
                                   shape: BoxShape.circle,
-                                  boxShadow: selectedOption != null && !_isSubmitting
+                                  boxShadow:
+                                      selectedOption != null && !_isSubmitting
                                       ? [
                                           BoxShadow(
-                                            color: color
-                                                .withOpacity(0.4),
+                                            color: color.withOpacity(0.4),
                                             blurRadius: 12,
                                             offset: const Offset(0, 4),
                                             spreadRadius: 0,
@@ -795,19 +794,24 @@ class _IsAnsweredAllQuestionsScreenState
                                         ]
                                       : null,
                                 ),
-                                child: _isSubmitting && _currentQuestionIndex == _questionCount - 1
+                                child:
+                                    _isSubmitting &&
+                                        _currentQuestionIndex ==
+                                            _questionCount - 1
                                     ? SizedBox(
                                         width: 20,
                                         height: 20,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
                                         ),
                                       )
                                     : Icon(
                                         _currentQuestionIndex <
-                                                _questionCount -
-                                                    1
+                                                _questionCount - 1
                                             ? Icons.arrow_forward_rounded
                                             : Icons.check_rounded,
                                         color: Colors.white,

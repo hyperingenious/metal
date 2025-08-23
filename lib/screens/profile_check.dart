@@ -2,16 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:lushh/appwrite/appwrite.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'dart:math';
+import 'dart:ui';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
+import '../services/config_service.dart';
 
-// Import all ids from .env using String.fromEnvironment
-// Updated to match actual .env variable names
-const databaseId = String.fromEnvironment('DATABASE_ID');
-const usersCollectionId = String.fromEnvironment('USERS_COLLECTIONID');
-const biodataCollectionId = String.fromEnvironment('BIODATA_COLLECTIONID');
-const imagesCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
-const locationCollectionId = String.fromEnvironment('LOCATION_COLLECTIONID');
+// Import config values using ConfigService
+final projectId = ConfigService().get('PROJECT_ID');
+final databaseId = ConfigService().get('DATABASE_ID');
+final usersCollectionId = ConfigService().get('USERS_COLLECTIONID');
+final biodataCollectionId = ConfigService().get('BIODATA_COLLECTIONID');
+final imagesCollectionId = ConfigService().get('IMAGE_COLLECTIONID');
+final locationCollectionId = ConfigService().get('LOCATION_COLLECTIONID');
 
 class ProfileCheck extends StatefulWidget {
   final String userId;
@@ -27,6 +29,12 @@ class _ProfileCheckState extends State<ProfileCheck> {
   bool _hasError = false;
 
   Map<String, dynamic>? _profile;
+
+  // Palette
+  static const _ink = Color(0xFF3B2357);
+  static const _inkMuted = Color(0xFF6D4B86);
+  static const _brand = Color(0xFF8B4DFF);
+  static const _bg = Colors.white;
 
   @override
   void initState() {
@@ -157,20 +165,39 @@ class _ProfileCheckState extends State<ProfileCheck> {
     }
   }
 
+  Widget _sectionTitle(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 8),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+          color: _ink,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+
+  Divider get _softDivider =>
+      Divider(height: 28, thickness: 1, color: Colors.black.withOpacity(0.06));
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: _bg,
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_hasError || _profile == null) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: _bg,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: _bg,
           elevation: 0,
           leading: IconButton(
             icon: const Icon(
@@ -185,7 +212,7 @@ class _ProfileCheckState extends State<ProfileCheck> {
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w600,
               fontSize: 18,
-              color: Color(0xFF3B2357),
+              color: _ink,
             ),
           ),
         ),
@@ -199,12 +226,23 @@ class _ProfileCheckState extends State<ProfileCheck> {
                   fontFamily: 'Poppins',
                   fontWeight: FontWeight.w600,
                   fontSize: 18,
-                  color: Color(0xFF3B2357),
+                  color: _ink,
                 ),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _loadProfile,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _brand,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 child: const Text(
                   "Retry",
                   style: TextStyle(fontFamily: 'Poppins'),
@@ -260,18 +298,15 @@ class _ProfileCheckState extends State<ProfileCheck> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _bg,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(56),
         child: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: _bg,
           elevation: 0,
           automaticallyImplyLeading: false,
           leading: IconButton(
-            icon: const Icon(
-              PhosphorIconsRegular.arrowLeft,
-              color: Color(0xFF6D4B86),
-            ),
+            icon: const Icon(PhosphorIconsRegular.arrowLeft, color: _inkMuted),
             onPressed: () => Navigator.pop(context),
           ),
           titleSpacing: 16,
@@ -281,7 +316,8 @@ class _ProfileCheckState extends State<ProfileCheck> {
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w700,
               fontSize: 22,
-              color: Color(0xFF2D1B3A),
+              color: _ink,
+              letterSpacing: 0.2,
             ),
           ),
         ),
@@ -301,9 +337,10 @@ class _ProfileCheckState extends State<ProfileCheck> {
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 14,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
@@ -314,61 +351,71 @@ class _ProfileCheckState extends State<ProfileCheck> {
                       borderRadius: BorderRadius.circular(18),
                       child: SizedBox(
                         width: double.infinity,
-                        height: MediaQuery.of(context).size.height * 0.8,
-                        child: Stack(
-                          children: [
-                            image != null && image.isNotEmpty
-                                ? Image.network(
-                                    image,
-                                    width: double.infinity,
-                                    height:
-                                        MediaQuery.of(context).size.height *
-                                        0.8,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            Container(
-                                              width: double.infinity,
-                                              height: 420,
-                                              color: Colors.grey[300],
-                                              child: const Icon(
-                                                Icons.person,
-                                                size: 80,
-                                                color: Colors.white,
+                        child: AspectRatio(
+                          aspectRatio: 3 / 4, // consistent portrait card
+                          child: Stack(
+                            children: [
+                              image != null && image.isNotEmpty
+                                  ? Image.network(
+                                      image,
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      fit: BoxFit.cover,
+                                      frameBuilder: (context, child, frame, _) {
+                                        return AnimatedOpacity(
+                                          opacity: frame == null ? 0 : 1,
+                                          duration: const Duration(
+                                            milliseconds: 300,
+                                          ),
+                                          curve: Curves.easeOut,
+                                          child: child,
+                                        );
+                                      },
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Container(
+                                                color: Colors.grey[300],
+                                                child: const Center(
+                                                  child: Icon(
+                                                    Icons.person,
+                                                    size: 80,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                  )
-                                : Container(
-                                    width: double.infinity,
-                                    height: 420,
-                                    color: Colors.grey[300],
-                                    child: const Icon(
-                                      Icons.person,
-                                      size: 80,
-                                      color: Colors.white,
+                                    )
+                                  : Container(
+                                      color: Colors.grey[300],
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.person,
+                                          size: 80,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                            // Gradient overlay at the bottom
-                            Positioned.fill(
-                              child: IgnorePointer(
-                                child: Container(
-                                  decoration: const BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Colors.transparent,
-                                        Colors.transparent,
-                                        Color.fromARGB(120, 0, 0, 0),
-                                        Color.fromARGB(180, 0, 0, 0),
-                                      ],
-                                      stops: [0.0, 0.6, 0.85, 1.0],
+                              // Gradient overlay at the bottom
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.transparent,
+                                          Colors.transparent,
+                                          Color.fromARGB(120, 0, 0, 0),
+                                          Color.fromARGB(200, 0, 0, 0),
+                                        ],
+                                        stops: [0.0, 0.55, 0.82, 1.0],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -377,104 +424,121 @@ class _ProfileCheckState extends State<ProfileCheck> {
                       Positioned(
                         top: 16,
                         left: 16,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.92),
-                            borderRadius: BorderRadius.circular(22),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(22),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
                               ),
-                            ],
-                            border: Border.all(
-                              color: const Color(0xFF8B4DFF),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _getProfessionIcon(professionType),
-                                color: const Color(0xFF8B4DFF),
-                                size: 22,
-                              ),
-                              const SizedBox(width: 7),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    professionType[0].toUpperCase() +
-                                        professionType.substring(1),
-                                    style: const TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                      color: Color(0xFF3B2357),
-                                    ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.85),
+                                borderRadius: BorderRadius.circular(22),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
                                   ),
-                                  if (professionSubtype != null &&
-                                      professionSubtype.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 1.5),
-                                      child: Text(
-                                        professionSubtype,
+                                ],
+                                border: Border.all(color: _brand, width: 1),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _getProfessionIcon(professionType),
+                                    color: _brand,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        professionType[0].toUpperCase() +
+                                            professionType.substring(1),
                                         style: const TextStyle(
                                           fontFamily: 'Poppins',
-                                          fontWeight: FontWeight.w400,
-                                          fontSize: 12.5,
-                                          color: Color(0xFF6D4B86),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14.5,
+                                          color: _ink,
                                         ),
                                       ),
-                                    ),
+                                      if (professionSubtype != null &&
+                                          professionSubtype.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 1.5,
+                                          ),
+                                          child: Text(
+                                            professionSubtype,
+                                            style: const TextStyle(
+                                              fontFamily: 'Poppins',
+                                              fontWeight: FontWeight.w400,
+                                              fontSize: 12,
+                                              color: _inkMuted,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
                     // Name, gender, age at bottom left
                     Positioned(
                       left: 16,
-                      bottom: 32,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      bottom: 22,
+                      right: 16,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(
-                            name,
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w600,
-                              fontSize: 28,
-                              color: Colors.white,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black38,
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 28,
+                                    color: Colors.white,
+                                    height: 1.1,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black38,
+                                        blurRadius: 6,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${gender != null && gender.isNotEmpty ? gender[0].toUpperCase() : "?"}, ${age != null ? age : "--"}',
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w600,
-                              fontSize: 26,
-                              color: Colors.white,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black38,
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${gender != null && gender.isNotEmpty ? gender[0].toUpperCase() : "?"}, ${age != null ? age : "--"}',
+                                  style: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 20,
+                                    color: Colors.white,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black38,
+                                        blurRadius: 6,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -485,100 +549,112 @@ class _ProfileCheckState extends State<ProfileCheck> {
                   ],
                 ),
               ),
-              // Bio Section
-              const Align(
+
+              // Bio
+              Align(
                 alignment: Alignment.center,
                 child: Text(
                   "Bio",
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
-                    color: Color(0xFF3B2357),
+                    color: _ink,
+                    letterSpacing: 0.2,
                   ),
                   textAlign: TextAlign.center,
                 ),
               ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10.0),
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F6FA),
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 child: Text(
                   bio ?? "No bio provided.",
                   textAlign: TextAlign.left,
                   style: const TextStyle(
                     fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 24,
-                    color: Color(0xFF3B2357),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                    color: _ink,
+                    height: 1.35,
                   ),
                 ),
               ),
-              const SizedBox(height: 22),
-              // About me Section
-              const Text(
-                "About me",
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 18,
-                  color: Color(0xFF3B2357),
-                ),
-              ),
-              const SizedBox(height: 10),
-              hobbies.isNotEmpty
-                  ? Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: hobbies.map<Widget>((hobby) {
-                        final String hobbyName =
-                            hobby is Map && hobby['hobby_name'] != null
-                            ? hobby['hobby_name'].toString()
-                            : '';
-                        final String hobbyCategory =
-                            hobby is Map && hobby['hobby_category'] != null
-                            ? hobby['hobby_category'].toString()
-                            : '';
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8F6FA),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            hobbyName.isNotEmpty
-                                ? hobbyName[0].toUpperCase() +
-                                      hobbyName.substring(1)
-                                : hobbyCategory,
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w500,
-                              fontSize: 14,
-                              color: Color(0xFF6D4B86),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    )
-                  : const Text(
+
+              _softDivider,
+
+              // About me
+              _sectionTitle("About me"),
+              Builder(
+                builder: (context) {
+                  if (hobbies.isEmpty) {
+                    return const Text(
                       "No hobbies listed.",
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w400,
                         fontSize: 13,
-                        color: Color(0xFF6D4B86),
+                        color: _inkMuted,
                       ),
-                    ),
-              // Height Section (below About me)
+                    );
+                  }
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: hobbies.map<Widget>((hobby) {
+                      final String hobbyName =
+                          hobby is Map && hobby['hobby_name'] != null
+                          ? hobby['hobby_name'].toString()
+                          : '';
+                      final String hobbyCategory =
+                          hobby is Map && hobby['hobby_category'] != null
+                          ? hobby['hobby_category'].toString()
+                          : '';
+                      final label = hobbyName.isNotEmpty
+                          ? hobbyName
+                          : hobbyCategory;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3EEFF),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: _brand.withOpacity(0.25)),
+                        ),
+                        child: Text(
+                          label.isNotEmpty
+                              ? label[0].toUpperCase() + label.substring(1)
+                              : '',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                            color: _inkMuted,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+
               if (heightDisplay != null && heightDisplay.isNotEmpty) ...[
                 const SizedBox(height: 18),
                 Row(
                   children: [
                     const Icon(
                       PhosphorIconsRegular.ruler,
-                      color: Color(0xFF6D4B86),
+                      color: _inkMuted,
                       size: 18,
                     ),
                     const SizedBox(width: 7),
@@ -588,57 +664,61 @@ class _ProfileCheckState extends State<ProfileCheck> {
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w500,
                         fontSize: 15,
-                        color: Color(0xFF3B2357),
+                        color: _ink,
                       ),
                     ),
                   ],
                 ),
               ],
-              const SizedBox(height: 24),
-              // Location Section
+
+              const SizedBox(height: 10),
+
+              // Location
               if ((city != null && city.isNotEmpty) ||
                   (state != null && state.isNotEmpty) ||
-                  (country != null && country.isNotEmpty))
+                  (country != null && country.isNotEmpty)) ...[
+                _sectionTitle("Location"),
                 Wrap(
-                  spacing: 12,
+                  spacing: 8,
                   runSpacing: 8,
-                  alignment: WrapAlignment.center,
                   children: [
                     if ((city != null && city.isNotEmpty) ||
                         (state != null && state.isNotEmpty))
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
+                          horizontal: 12,
+                          vertical: 8,
                         ),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(22),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
                           ],
+                          border: Border.all(
+                            color: Colors.black.withOpacity(0.05),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             const Icon(
                               Icons.location_on,
-                              color: Color(0xFF6D4B86),
+                              color: _inkMuted,
                               size: 16,
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 6),
                             Text(
                               "Lives in ${city ?? ''}${(city != null && city.isNotEmpty && state != null && state.isNotEmpty) ? ', ' : ''}${state ?? ''}",
                               style: const TextStyle(
                                 fontFamily: 'Poppins',
                                 fontWeight: FontWeight.w500,
-                                fontSize: 12.5,
-                                color: Color(0xFF6D4B86),
+                                fontSize: 13,
+                                color: _inkMuted,
                               ),
                             ),
                           ],
@@ -647,30 +727,28 @@ class _ProfileCheckState extends State<ProfileCheck> {
                     if (country != null && country.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
+                          horizontal: 12,
+                          vertical: 8,
                         ),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(22),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
                           ],
+                          border: Border.all(
+                            color: Colors.black.withOpacity(0.05),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            const Icon(
-                              Icons.place,
-                              color: Color(0xFF6D4B86),
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
+                            const Icon(Icons.place, color: _inkMuted, size: 16),
+                            const SizedBox(width: 6),
                             Text(
                               "From $country",
                               overflow: TextOverflow.ellipsis,
@@ -679,8 +757,8 @@ class _ProfileCheckState extends State<ProfileCheck> {
                               style: const TextStyle(
                                 fontFamily: 'Poppins',
                                 fontWeight: FontWeight.w500,
-                                fontSize: 12.5,
-                                color: Color(0xFF6D4B86),
+                                fontSize: 13,
+                                color: _inkMuted,
                               ),
                             ),
                           ],
@@ -688,57 +766,67 @@ class _ProfileCheckState extends State<ProfileCheck> {
                       ),
                   ],
                 ),
-              const SizedBox(height: 32),
+              ],
+
+              const SizedBox(height: 24),
+
               // Additional Images Section
-              if (images.length > 1)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ...(images.skip(1).map<Widget>((imgUrl) {
-                      if (imgUrl == null || imgUrl.toString().isEmpty)
-                        return const SizedBox.shrink();
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 20),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: MediaQuery.of(context).size.height * 0.8,
-                            child: Image.network(
-                              imgUrl.toString(),
-                              width: double.infinity,
-                              height: MediaQuery.of(context).size.height * 0.8,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                    width: double.infinity,
-                                    height:
-                                        MediaQuery.of(context).size.height *
-                                        0.8,
-                                    color: Colors.grey[300],
-                                    child: const Icon(
-                                      Icons.broken_image,
-                                      size: 80,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                            ),
+              if (images.length > 1) ...[
+                _sectionTitle("Photos"),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: images.length - 1,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 3 / 4,
+                  ),
+                  itemBuilder: (context, index) {
+                    final imgUrl = images[index + 1];
+                    if (imgUrl.isEmpty) return const SizedBox.shrink();
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.network(
+                          imgUrl,
+                          fit: BoxFit.cover,
+                          frameBuilder: (context, child, frame, _) {
+                            return AnimatedOpacity(
+                              opacity: frame == null ? 0 : 1,
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOut,
+                              child: child,
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: Colors.grey[300],
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.broken_image,
+                                    size: 48,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
                         ),
-                      );
-                    })).toList(),
-                  ],
+                      ),
+                    );
+                  },
                 ),
+              ],
             ],
           ),
         ),

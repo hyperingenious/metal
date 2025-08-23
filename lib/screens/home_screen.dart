@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../appwrite/appwrite.dart';
+import '../services/config_service.dart';
 import 'main_tabs/profile_screen.dart';
 import 'main_tabs/explore_screen.dart';
 import 'main_tabs/notifications_screen.dart';
 import 'main_tabs/chats_screen.dart';
 import 'package:appwrite/appwrite.dart';
 
-// Import all ids from .env using String.fromEnvironment
-const String kDatabaseId = String.fromEnvironment('DATABASE_ID');
-const String kNotificationsCollectionId = String.fromEnvironment('NOTIFICATIONS_COLLECTIONID');
-const String kConnectionsCollectionId = String.fromEnvironment('CONNECTIONS_COLLECTIONID');
-const String kMessagesCollectionId = String.fromEnvironment('MESSAGES_COLLECTIONID');
+// Use ConfigService to get configuration values
+final configService = ConfigService();
+final String kDatabaseId = configService.get('DATABASE_ID') ?? '';
+final String kNotificationsCollectionId =
+    configService.get('NOTIFICATIONS_COLLECTIONID') ?? '';
+final String kConnectionsCollectionId =
+    configService.get('CONNECTIONS_COLLECTIONID') ?? '';
+final String kMessagesCollectionId =
+    configService.get('MESSAGES_COLLECTIONID') ?? '';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -185,7 +190,8 @@ class _HomeScreenState extends State<HomeScreen> {
           selectedItemColor: const Color(0xFF412758),
           unselectedItemColor: const Color(0xFF412758),
           type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white, // changed from Color(0xfff8ebf9) to white
+          backgroundColor:
+              Colors.white, // changed from Color(0xfff8ebf9) to white
           elevation: 0, // Remove default shadow
           items: [
             BottomNavigationBarItem(

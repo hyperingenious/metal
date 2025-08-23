@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:lushh/appwrite/appwrite.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:lushh/screens/profile_completion/screen_6.dart';
+import 'package:lushh/services/config_service.dart';
 
-// Import IDs from .env using String.fromEnvironment
-const String databaseId = String.fromEnvironment('DATABASE_ID');
-const String completionStatusCollectionId = String.fromEnvironment(
-  'COMPLETION_STATUS_COLLECTIONID',
-);
-const String preferenceCollectionID = String.fromEnvironment(
-  'PREFERENCE_COLLECTIONID',
-);
+// Import IDs using ConfigService
+final databaseId = ConfigService().get('DATABASE_ID');
+final completionStatusCollectionId = ConfigService().get('COMPLETION_STATUS_COLLECTIONID');
+final preferenceCollectionID = ConfigService().get('PREFERENCE_COLLECTIONID');
 
 class AddMinMaxAgeScreen extends StatefulWidget {
   const AddMinMaxAgeScreen({super.key});

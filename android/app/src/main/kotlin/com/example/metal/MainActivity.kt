@@ -1,4 +1,4 @@
-package com.example.lushh
+package com.lushh.app
 
 import io.flutter.embedding.android.FlutterActivity
 

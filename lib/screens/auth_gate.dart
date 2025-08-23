@@ -3,16 +3,17 @@ import 'package:appwrite/appwrite.dart';
 
 import 'package:flutter/material.dart';
 import 'package:lushh/appwrite/appwrite.dart';
+import 'package:lushh/services/config_service.dart';
 import 'home_screen.dart';
 import 'phone_input_screen.dart';
 import 'profile_completion/profile_completion_router.dart';
 import 'settings_screen.dart';
 
-// Import IDs from .env using String.fromEnvironment
-const String databaseId = String.fromEnvironment('DATABASE_ID');
-const String completionStatusCollectionId = String.fromEnvironment(
-  'COMPLETION_STATUS_COLLECTIONID',
-);
+// Import IDs from ConfigService
+final projectId = ConfigService().get('PROJECT_ID') as String;
+final databaseId = ConfigService().get('DATABASE_ID') as String;
+final completionStatusCollectionId =
+    ConfigService().get('COMPLETION_STATUS_COLLECTIONID') as String;
 
 class AuthGate extends StatefulWidget {
   final String? requestedRoute;
@@ -36,8 +37,12 @@ class _AuthGateState extends State<AuthGate> {
 
   void checkLogin() async {
     try {
-      await account.get(); // will throw if unauthenticated
       final user = await account.get();
+
+      if (!ConfigService().variableStatus && user != null) {
+        await ConfigService().loadBootstrapConfig();
+      }
+
       final userId = user.$id;
 
       final doc = await databases.listDocuments(
@@ -50,7 +55,8 @@ class _AuthGateState extends State<AuthGate> {
         isLoggedIn = true;
         isChecking = false;
         isAllCompleted = doc.documents[0].data['isAllCompleted'] ?? false;
-        isAnsweredQuestions = doc.documents[0].data['isAnsweredQuestions'] ?? false;
+        isAnsweredQuestions =
+            doc.documents[0].data['isAnsweredQuestions'] ?? false;
       });
     } catch (e) {
       setState(() {

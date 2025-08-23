@@ -2,11 +2,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
 import '../appwrite/appwrite.dart';
+import '../services/config_service.dart';
 
-// Import all IDs from .env using String.fromEnvironment
-const String databaseId = String.fromEnvironment('DATABASE_ID');
-const String completedStatusCollectionID = String.fromEnvironment('COMPLETION_STATUS_COLLECTIONID');
-const String usersCollectionID = String.fromEnvironment('USERS_COLLECTIONID');
+// Use ConfigService to get configuration values
+final projectId = ConfigService().get('PROJECT_ID');
+final databaseId = ConfigService().get('DATABASE_ID');
+final completedStatusCollectionID = ConfigService().get(
+  'COMPLETION_STATUS_COLLECTIONID',
+);
+final usersCollectionID = ConfigService().get('USERS_COLLECTIONID');
 
 class OtpScreen extends StatefulWidget {
   final String phone;
@@ -68,6 +72,9 @@ class _OtpScreenState extends State<OtpScreen> {
 
     try {
       await account.createSession(userId: widget.userId, secret: code);
+      if (!ConfigService().variableStatus) {
+        await ConfigService().loadBootstrapConfig();
+      }
 
       final userCollectionResults = await databases.listDocuments(
         databaseId: databaseId,
@@ -101,9 +108,12 @@ class _OtpScreenState extends State<OtpScreen> {
 
       Navigator.pushReplacementNamed(context, '/main');
     } on AppwriteException catch (e) {
+      final String errorMessage = ((e.message ?? '').trim().isNotEmpty)
+          ? e.message!
+          : 'OTP verification failed';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.message ?? 'OTP verification failed'),
+          content: Text(errorMessage),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
@@ -127,9 +137,12 @@ class _OtpScreenState extends State<OtpScreen> {
       );
       _startTimer();
     } on AppwriteException catch (e) {
+      final String errorMessage = ((e.message ?? '').trim().isNotEmpty)
+          ? e.message!
+          : 'Failed to resend OTP';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.message ?? 'Failed to resend OTP'),
+          content: Text(errorMessage),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
@@ -154,10 +167,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [
-                        colorScheme.primary,
-                        colorScheme.secondary,
-                      ],
+                      colors: [colorScheme.primary, colorScheme.secondary],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -250,7 +260,10 @@ class _OtpScreenState extends State<OtpScreen> {
                     borderRadius: BorderRadius.circular(50),
                     gradient: LinearGradient(
                       colors: _isVerifying
-                          ? [colorScheme.onSurface.withOpacity(0.2), colorScheme.onSurface.withOpacity(0.2)]
+                          ? [
+                              colorScheme.onSurface.withOpacity(0.2),
+                              colorScheme.onSurface.withOpacity(0.2),
+                            ]
                           : [colorScheme.primary, colorScheme.secondary],
                     ),
                     boxShadow: [

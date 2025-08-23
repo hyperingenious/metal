@@ -5,15 +5,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:lushh/appwrite/appwrite.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:lushh/screens/profile_completion/screen_8.dart';
+import 'package:lushh/services/config_service.dart';
 
-// Import all IDs from .env using String.fromEnvironment
-const String databaseId = String.fromEnvironment('DATABASE_ID');
-const String completionStatusCollectionId = String.fromEnvironment(
-  'COMPLETION_STATUS_COLLECTIONID',
-);
-const String imagesCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
-const String storageBucketId = String.fromEnvironment('STORAGE_BUCKETID');
-const String appwriteProjectId = String.fromEnvironment('PROJECT_ID');
+final databaseId = ConfigService().get('DATABASE_ID');
+final completionStatusCollectionId = ConfigService().get('COMPLETION_STATUS_COLLECTIONID');
+final imagesCollectionId = ConfigService().get('IMAGE_COLLECTIONID');
+final storageBucketId = ConfigService().get('STORAGE_BUCKETID');
+final appwriteProjectId = ConfigService().get('PROJECT_ID');
 
 class AddImagesScreen extends StatefulWidget {
   const AddImagesScreen({super.key});
@@ -30,7 +28,6 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
 
   final ImagePicker _picker = ImagePicker();
 
-  // Theme colors (align with other screens)
   final Color themeColor = Colors.black;
   final Color accentColor = const Color(0xFF6D4B86);
 
@@ -193,37 +190,51 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
       itemCount: maxImages,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
+        mainAxisSpacing: 14,
+        crossAxisSpacing: 14,
+        childAspectRatio: 0.9,
       ),
       itemBuilder: (context, index) {
         final image = _selectedImages[index];
         if (image != null) {
           return Stack(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Image.file(
-                  File(image.path),
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.file(
+                    File(image.path),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                  ),
                 ),
               ),
               Positioned(
-                top: 4,
-                right: 4,
+                top: 6,
+                right: 6,
                 child: GestureDetector(
                   onTap: () => _removeImageAt(index),
                   child: Container(
+                    padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.65),
+                      color: Colors.black.withOpacity(0.7),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.close,
                       color: Colors.white,
-                      size: 20,
+                      size: 18,
                     ),
                   ),
                 ),
@@ -235,15 +246,30 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
             onTap: _pickImages,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(14),
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: accentColor.withOpacity(0.18),
-                  width: 1.2,
+                  color: accentColor.withOpacity(0.25),
+                  width: 1.3,
                 ),
               ),
               child: Center(
-                child: Icon(Icons.add_a_photo, color: accentColor, size: 32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_a_photo,
+                        color: accentColor.withOpacity(0.85), size: 30),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Add",
+                      style: TextStyle(
+                        color: accentColor.withOpacity(0.85),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -255,7 +281,7 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xfff7f7f7),
+      backgroundColor: const Color(0xfffafafa),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -266,7 +292,6 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
             fontFamily: 'SF Pro Display',
             fontWeight: FontWeight.bold,
             fontSize: 22,
-            letterSpacing: -0.5,
           ),
         ),
         iconTheme: IconThemeData(color: themeColor),
@@ -274,37 +299,35 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
+              padding: const EdgeInsets.symmetric(horizontal: 22),
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 28),
                     Text(
                       "Upload at least 4 images of yourself",
                       style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
                         color: themeColor,
                         fontFamily: 'SF Pro Display',
-                        letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Text(
                       "Pick your best photos. You can add up to 6 images.",
                       style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.black.withOpacity(0.7),
-                        fontFamily: 'SF Pro Display',
+                        fontSize: 15,
+                        color: Colors.black.withOpacity(0.6),
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 26),
                     _buildImageGrid(),
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 40),
                     SizedBox(
                       width: double.infinity,
-                      height: 56,
+                      height: 54,
                       child: ElevatedButton(
                         onPressed: _submit,
                         style: ElevatedButton.styleFrom(
@@ -312,21 +335,19 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          elevation: 3,
+                          elevation: 5,
                         ),
                         child: const Text(
                           "Continue",
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 17,
                             fontWeight: FontWeight.w700,
-                            fontFamily: 'SF Pro Display',
-                            letterSpacing: 0.1,
                             color: Colors.white,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 30),
                   ],
                 ),
               ),

@@ -10,36 +10,32 @@ import 'package:lushh/screens/profile_completion/screen_6.dart';
 import 'package:lushh/screens/profile_completion/screen_7.dart';
 import 'package:lushh/screens/profile_completion/screen_8.dart';
 import 'package:lushh/screens/profile_completion/isAnsweredAllQuestionsScreen.dart';
+import 'package:lushh/services/config_service.dart';
 
-// Import all IDs from environment using String.fromEnvironment
-const appwriteDevKey = String.fromEnvironment('APPWRITE_DEV_KEY');
-const appwriteEndpoint = String.fromEnvironment('APPWRITE_ENDPOINT');
-const projectId = String.fromEnvironment('PROJECT_ID');
-const databaseId = String.fromEnvironment('DATABASE_ID');
-const biodataCollectionId = String.fromEnvironment('BIODATA_COLLECTIONID');
-const blockedCollectionId = String.fromEnvironment('BLOCKED_COLLECTIONID');
-const completionStatusCollectionId = String.fromEnvironment(
+// Import all IDs using ConfigService
+final appwriteEndpoint = ConfigService().get('APPWRITE_ENDPOINT');
+final projectId = ConfigService().get('PROJECT_ID');
+final databaseId = ConfigService().get('DATABASE_ID');
+final biodataCollectionId = ConfigService().get('BIODATA_COLLECTIONID');
+final blockedCollectionId = ConfigService().get('BLOCKED_COLLECTIONID');
+final completionStatusCollectionId = ConfigService().get(
   'COMPLETION_STATUS_COLLECTIONID',
 );
-const connectionsCollectionId = String.fromEnvironment(
-  'CONNECTIONS_COLLECTIONID',
-);
-const hasShownCollectionId = String.fromEnvironment('HAS_SHOWN_COLLECTIONID');
-const hobbiesCollectionId = String.fromEnvironment('HOBBIES_COLLECTIONID');
-const imageCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
-const locationCollectionId = String.fromEnvironment('LOCATION_COLLECTIONID');
-const messageInboxCollectionId = String.fromEnvironment(
+final connectionsCollectionId = ConfigService().get('CONNECTIONS_COLLECTIONID');
+final hasShownCollectionId = ConfigService().get('HAS_SHOWN_COLLECTIONID');
+final hobbiesCollectionId = ConfigService().get('HOBBIES_COLLECTIONID');
+final imageCollectionId = ConfigService().get('IMAGE_COLLECTIONID');
+final locationCollectionId = ConfigService().get('LOCATION_COLLECTIONID');
+final messageInboxCollectionId = ConfigService().get(
   'MESSAGE_INBOX_COLLECTIONID',
 );
-const messagesCollectionId = String.fromEnvironment('MESSAGES_COLLECTIONID');
-const notificationsCollectionId = String.fromEnvironment(
+final messagesCollectionId = ConfigService().get('MESSAGES_COLLECTIONID');
+final notificationsCollectionId = ConfigService().get(
   'NOTIFICATIONS_COLLECTIONID',
 );
-const preferenceCollectionId = String.fromEnvironment(
-  'PREFERENCE_COLLECTIONID',
-);
-const reportsCollectionId = String.fromEnvironment('REPORTS_COLLECTIONID');
-const usersCollectionId = String.fromEnvironment('USERS_COLLECTIONID');
+final preferenceCollectionId = ConfigService().get('PREFERENCE_COLLECTIONID');
+final reportsCollectionId = ConfigService().get('REPORTS_COLLECTIONID');
+final usersCollectionId = ConfigService().get('USERS_COLLECTIONID');
 
 class ProfileCompletionRouter extends StatefulWidget {
   const ProfileCompletionRouter({super.key});
@@ -58,16 +54,35 @@ class _ProfileCompletionRouterState extends State<ProfileCompletionRouter> {
     _checkProfileStatus();
   }
 
-  // Use environment variables from above
-
   Future<void> _checkProfileStatus() async {
     try {
-      // You will need to initialize your Appwrite client, account, and databases here using the above constants.
+      // Load configuration first
+      if (!ConfigService().variableStatus) {
+        await ConfigService().loadBootstrapConfig();
+      }
+
+      // Now get the configuration values after they've been loaded
+      final appwriteEndpoint = ConfigService().get('APPWRITE_ENDPOINT');
+      final projectId = ConfigService().get('PROJECT_ID');
+      final databaseId = ConfigService().get('DATABASE_ID');
+      final completionStatusCollectionId = ConfigService().get(
+        'COMPLETION_STATUS_COLLECTIONID',
+      );
+
+      // Validate that required configuration values are present
+      if (
+          appwriteEndpoint == null ||
+          projectId == null ||
+          databaseId == null ||
+          completionStatusCollectionId == null) {
+        throw Exception('Required configuration values are missing');
+      }
+
+      // Initialize Appwrite client with the loaded configuration
       final client = Client()
         ..setEndpoint(appwriteEndpoint)
         ..setProject(projectId)
-        ..setSelfSigned(status: true)
-        ..setDevKey(appwriteDevKey);
+        ..setSelfSigned(status: true);
 
       final account = Account(client);
       final databases = Databases(client);
@@ -109,7 +124,7 @@ class _ProfileCompletionRouterState extends State<ProfileCompletionRouter> {
       final isLocationAdded =
           completionDocument.data['isLocationAdded'] as bool? ?? false;
 
-      final isAnsweredQuestions=
+      final isAnsweredQuestions =
           completionDocument.data['isAnsweredQuestions'] as bool? ?? false;
 
       if (isAddedDOBAndName == false) {
@@ -154,8 +169,7 @@ class _ProfileCompletionRouterState extends State<ProfileCompletionRouter> {
           context,
           MaterialPageRoute(builder: (_) => AddLocationScreen()),
         );
-      }
- else if (isAnsweredQuestions == false) {
+      } else if (isAnsweredQuestions == false) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => IsAnsweredAllQuestionsScreen()),
@@ -174,6 +188,11 @@ class _ProfileCompletionRouterState extends State<ProfileCompletionRouter> {
           context,
         ).showSnackBar(SnackBar(content: Text('Error: ${e.message}')));
       }
+    } catch (e) {
+      // Handle other errors including configuration errors
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Configuration error: ${e.toString()}')),
+      );
     } finally {
       setState(() => _loading = false);
     }

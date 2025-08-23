@@ -3,36 +3,26 @@ import 'package:appwrite/appwrite.dart';
 import 'package:lushh/appwrite/appwrite.dart';
 import 'package:lushh/screens/profile_completion/screen_4.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lushh/services/config_service.dart';
 
-// Import all IDs and keys using String.fromEnvironment
-const appwriteDevKey = String.fromEnvironment('APPWRITE_DEV_KEY');
-const appwriteEndpoint = String.fromEnvironment('APPWRITE_ENDPOINT');
-const projectId = String.fromEnvironment('PROJECT_ID');
-const databaseId = String.fromEnvironment('DATABASE_ID');
-const biodataCollectionId = String.fromEnvironment('BIODATA_COLLECTIONID');
-const blockedCollectionId = String.fromEnvironment('BLOCKED_COLLECTIONID');
-const completionStatusCollectionId = String.fromEnvironment(
-  'COMPLETION_STATUS_COLLECTIONID',
-);
-const connectionsCollectionId = String.fromEnvironment(
-  'CONNECTIONS_COLLECTIONID',
-);
-const hasShownCollectionId = String.fromEnvironment('HAS_SHOWN_COLLECTIONID');
-const hobbiesCollectionId = String.fromEnvironment('HOBBIES_COLLECTIONID');
-const imageCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
-const locationCollectionId = String.fromEnvironment('LOCATION_COLLECTIONID');
-const messageInboxCollectionId = String.fromEnvironment(
-  'MESSAGE_INBOX_COLLECTIONID',
-);
-const messagesCollectionId = String.fromEnvironment('MESSAGES_COLLECTIONID');
-const notificationsCollectionId = String.fromEnvironment(
-  'NOTIFICATIONS_COLLECTIONID',
-);
-const preferenceCollectionId = String.fromEnvironment(
-  'PREFERENCE_COLLECTIONID',
-);
-const reportsCollectionId = String.fromEnvironment('REPORTS_COLLECTIONID');
-const usersCollectionId = String.fromEnvironment('USERS_COLLECTIONID');
+// Import all IDs and keys using ConfigService
+final appwriteEndpoint = ConfigService().get('APPWRITE_ENDPOINT');
+final projectId = ConfigService().get('PROJECT_ID');
+final databaseId = ConfigService().get('DATABASE_ID');
+final biodataCollectionId = ConfigService().get('BIODATA_COLLECTIONID');
+final blockedCollectionId = ConfigService().get('BLOCKED_COLLECTIONID');
+final completionStatusCollectionId = ConfigService().get('COMPLETION_STATUS_COLLECTIONID');
+final connectionsCollectionId = ConfigService().get('CONNECTIONS_COLLECTIONID');
+final hasShownCollectionId = ConfigService().get('HAS_SHOWN_COLLECTIONID');
+final hobbiesCollectionId = ConfigService().get('HOBBIES_COLLECTIONID');
+final imageCollectionId = ConfigService().get('IMAGE_COLLECTIONID');
+final locationCollectionId = ConfigService().get('LOCATION_COLLECTIONID');
+final messageInboxCollectionId = ConfigService().get('MESSAGE_INBOX_COLLECTIONID');
+final messagesCollectionId = ConfigService().get('MESSAGES_COLLECTIONID');
+final notificationsCollectionId = ConfigService().get('NOTIFICATIONS_COLLECTIONID');
+final preferenceCollectionId = ConfigService().get('PREFERENCE_COLLECTIONID');
+final reportsCollectionId = ConfigService().get('REPORTS_COLLECTIONID');
+final usersCollectionId = ConfigService().get('USERS_COLLECTIONID');
 
 class AddGenderScreen extends StatefulWidget {
   const AddGenderScreen({super.key});
@@ -42,14 +32,13 @@ class AddGenderScreen extends StatefulWidget {
 }
 
 class _AddGenderScreenState extends State<AddGenderScreen> {
-  String? _selectedGender; // Changed from 'Male' to null
+  String? _selectedGender;
   String _selectedProfession = 'Student';
   final TextEditingController _professionNameController =
       TextEditingController();
   final TextEditingController _bioController = TextEditingController();
   bool _isLoading = false;
 
-  // Profession dropdown options
   final List<String> _professions = [
     'Student',
     'Engineer',
@@ -80,9 +69,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final user = await account.get();
@@ -103,13 +90,12 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
 
       String bioDataDocumentID = bioDataDocument.documents[0].$id;
 
-      // Update biodata with all fields
       await databases.updateDocument(
         databaseId: databaseId,
         collectionId: biodataCollectionId,
         documentId: bioDataDocumentID,
         data: {
-          'gender': _selectedGender!.toLowerCase(), // Add ! since we validated it's not null
+          'gender': _selectedGender!.toLowerCase(),
           'profession_type': _selectedProfession,
           'profession_name': _professionNameController.text.trim(),
           'bio': _bioController.text.trim(),
@@ -147,9 +133,7 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
         ),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -162,460 +146,327 @@ class _AddGenderScreenState extends State<AddGenderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Simple, clean color scheme
-    final primaryColor = const Color(0xFF6366F1);
-    final primaryDark = const Color(0xFF3B2357);
+    final primaryGradient = const LinearGradient(
+      colors: [Color(0xFFa855f7), Color(0xFFec4899)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
     final textPrimary = const Color(0xFF1F2937);
     final textSecondary = const Color(0xFF6B7280);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: const Color(0xFFFDF7FD),
       appBar: AppBar(
         title: const Text(
-          "Tell us more...",
+          "Let’s get to know you ❤️",
           style: TextStyle(
             fontFamily: 'Poppins',
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: Color(0xFF1F2937),
           ),
         ),
         backgroundColor: Colors.white,
-        foregroundColor: textPrimary,
         elevation: 0.5,
         centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 32, 0, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Complete Your Profile",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: textPrimary,
-                          fontFamily: 'Poppins',
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        "Help us personalize your experience by sharing a bit about yourself.",
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: textSecondary,
-                          fontFamily: 'Poppins',
-                        ),
-                      ),
-                    ],
-                  ),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 24),
+              Text(
+                "We’ll match you better when you share a few details 😉",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: textSecondary,
+                  fontFamily: 'Poppins',
                 ),
+              ),
+              const SizedBox(height: 24),
 
-                // Gender Selection Card
-                Container(
-                  width: double.infinity,
+              _buildSectionCard(
+                icon: PhosphorIconsRegular.genderIntersex,
+                title: "Who are you?",
+                subtitle: "Pick what feels right for you 💖",
+                child: Row(
+                  children: [
+                    Expanded(child: _buildGenderOption('Male')),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildGenderOption('Female')),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              _buildSectionCard(
+                icon: PhosphorIconsRegular.briefcase,
+                title: "What do you do?",
+                subtitle: "Your vibe attracts your tribe ✨",
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: _professions
+                          .map((p) => _buildProfessionOption(p))
+                          .toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      controller: _professionNameController,
+                      label: "Profession Name",
+                      hint: "e.g. Software Engineer",
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              _buildSectionCard(
+                icon: PhosphorIconsRegular.user,
+                title: "Share your vibe",
+                subtitle: "Write something fun about yourself 😄",
+                child: _buildTextField(
+                  controller: _bioController,
+                  label: "About Me",
+                  hint: "I love sunsets, coffee, and spontaneous trips...",
+                  maxLength: 150,
+                  maxLines: 4,
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
+                    gradient: primaryGradient,
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            PhosphorIconsRegular.genderIntersex,
-                            color: primaryColor,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            "Gender",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 18,
-                              color: textPrimary,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildGenderOption(
-                              'Male',
-                              PhosphorIconsRegular.genderMale,
-                              primaryColor,
-                              primaryDark,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildGenderOption(
-                              'Female',
-                              PhosphorIconsRegular.genderFemale,
-                              primaryColor,
-                              primaryDark,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Profession Card
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            PhosphorIconsRegular.briefcase,
-                            color: primaryColor,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            "Profession",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 18,
-                              color: textPrimary,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: _professions.map((profession) {
-                          return _buildProfessionOption(
-                            profession,
-                            primaryColor,
-                            primaryDark,
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _professionNameController,
-                        decoration: InputDecoration(
-                          labelText: "Profession Name",
-                          labelStyle: TextStyle(
-                            fontFamily: 'Poppins',
-                            color: primaryColor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: primaryColor.withOpacity(0.3),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: primaryColor.withOpacity(0.3),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: primaryColor,
-                              width: 2,
-                            ),
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFF9FAFB),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Bio Card
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            PhosphorIconsRegular.user,
-                            color: primaryColor,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            "Bio",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 18,
-                              color: textPrimary,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      TextField(
-                        controller: _bioController,
-                        maxLength: 150,
-                        maxLines: 4,
-                        decoration: InputDecoration(
-                          labelText: "Tell us about yourself",
-                          labelStyle: TextStyle(
-                            fontFamily: 'Poppins',
-                            color: primaryColor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: primaryColor.withOpacity(0.3),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: primaryColor.withOpacity(0.3),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: primaryColor,
-                              width: 2,
-                            ),
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFF9FAFB),
-                          counterStyle: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 12,
-                            color: primaryColor,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Continue Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _submit,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryDark,
-                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Poppins',
-                      ),
-                      elevation: 2,
                     ),
+                    onPressed: _isLoading ? null : _submit,
                     child: _isLoading
                         ? const SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
-                        : const Text("Continue"),
+                        : const Text(
+                            "Continue ",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Poppins',
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
-
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGenderOption(
-    String gender,
-    IconData icon,
-    Color accentColor,
-    Color darkAccentColor,
-  ) {
-    final isSelected = _selectedGender == gender;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedGender = gender;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? darkAccentColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? darkAccentColor : accentColor.withOpacity(0.3),
-            width: 2,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.white : accentColor,
-              size: 32,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              gender,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : accentColor,
-                fontFamily: 'Poppins',
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildProfessionOption(
-    String profession,
-    Color accentColor,
-    Color darkAccentColor,
-  ) {
-    final isSelected = _selectedProfession == profession;
+  Widget _buildSectionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: const Color(0xFFa855f7)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 14,
+              fontFamily: 'Poppins',
+              color: Color(0xFF6B7280),
+            ),
+          ),
+          const SizedBox(height: 20),
+          child,
+        ],
+      ),
+    );
+  }
 
-    // Get appropriate icon for each profession
-    IconData getProfessionIcon(String prof) {
-      switch (prof.toLowerCase()) {
-        case 'student':
-          return PhosphorIconsRegular.graduationCap;
-        case 'engineer':
-          return PhosphorIconsRegular.gear;
-        case 'designer':
-          return PhosphorIconsRegular.palette;
-        case 'doctor':
-          return PhosphorIconsRegular.stethoscope;
-        case 'artist':
-          return PhosphorIconsRegular.paintBrush;
-        case 'other':
-          return PhosphorIconsRegular.briefcase;
-        default:
-          return PhosphorIconsRegular.briefcase;
-      }
-    }
-
+  Widget _buildGenderOption(String gender) {
+    final isSelected = _selectedGender == gender;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedProfession = profession;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      onTap: () => setState(() => _selectedGender = gender),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
         decoration: BoxDecoration(
-          color: isSelected ? darkAccentColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24), // Increased from 16 to 24 for more rounded corners
           border: Border.all(
-            color: isSelected ? darkAccentColor : accentColor.withOpacity(0.3),
-            width: 2,
+            color: isSelected
+                ? const Color(0xFFa855f7)
+                : const Color(0xFFE5E7EB),
+            width: isSelected ? 2 : 1,
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              getProfessionIcon(profession),
-              color: isSelected ? Colors.white : accentColor,
-              size: 20,
+              gender == 'Male'
+                  ? PhosphorIconsRegular.genderMale
+                  : PhosphorIconsRegular.genderFemale,
+              color: isSelected ? const Color(0xFFa855f7) : const Color(0xFF6B7280),
+              size: 24,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Text(
-              profession,
+              gender,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : accentColor,
                 fontFamily: 'Poppins',
+                color: isSelected ? const Color(0xFFa855f7) : const Color(0xFF374151),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfessionOption(String profession) {
+    final isSelected = _selectedProfession == profession;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedProfession = profession),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? const LinearGradient(
+                  colors: [Color(0xFFa855f7), Color(0xFFec4899)],
+                )
+              : null,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? Colors.transparent
+                : const Color(0xFFa855f7).withOpacity(0.3),
+            width: 2,
+          ),
+        ),
+        child: Text(
+          profession,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'Poppins',
+            color: isSelected ? Colors.white : const Color(0xFFa855f7),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+    int? maxLength,
+    int maxLines = 1,
+  }) {
+    return TextField(
+      controller: controller,
+      maxLength: maxLength,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        labelStyle: const TextStyle(
+          fontFamily: 'Poppins',
+          color: Color(0xFFa855f7),
+          fontWeight: FontWeight.w500,
+        ),
+        hintStyle: const TextStyle(
+          fontFamily: 'Poppins',
+          color: Color(0xFF9CA3AF),
+        ),
+        filled: true,
+        fillColor: const Color(0xFFF9FAFB),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              BorderSide(color: const Color(0xFFa855f7).withOpacity(0.3)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              BorderSide(color: const Color(0xFFa855f7).withOpacity(0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              const BorderSide(color: Color(0xFFa855f7), width: 2),
+        ),
+        counterStyle: const TextStyle(
+          fontFamily: 'Poppins',
+          fontSize: 12,
+          color: Color(0xFFa855f7),
         ),
       ),
     );

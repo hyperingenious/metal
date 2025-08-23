@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lushh/appwrite/appwrite.dart';
+import 'package:lushh/services/config_service.dart';
 import 'package:lushh/widgets/profile_edi_screen.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:appwrite/appwrite.dart';
@@ -9,9 +10,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lushh/widgets/expandable_prompts.dart';
 
 // Add prompts collection ID
-const String promptsCollectionId = String.fromEnvironment(
-  'PROMPTS_COLLECTIONID',
-);
+final String promptsCollectionId = ConfigService().get('PROMPTS_COLLECTIONID');
+final String biodataCollectionId = ConfigService().get('BIODATA_COLLECTIONID');
+final String databaseId = ConfigService().get('DATABASE_ID');
+final String imageCollectionId = ConfigService().get('IMAGE_COLLECTIONID');
+final String usersCollectionId = ConfigService().get('USERS_COLLECTIONID');
+final String hobbiesCollectionId = ConfigService().get('HOBBIES_COLLECTIONID');
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -610,37 +614,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8F6FA),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         elevation: 0,
+        shadowColor: Colors.black.withOpacity(0.08),
         title: const Text(
           "Profile",
           style: TextStyle(
             fontFamily: 'Poppins',
-            fontWeight: FontWeight.w600,
-            fontSize: 26,
+            fontWeight: FontWeight.w700,
+            fontSize: 28,
             color: Color(0xFF3B2357),
+            letterSpacing: -0.5,
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(
-              PhosphorIconsRegular.gearSix,
-              size: 22,
-              color: Color(0xFF3B2357),
+          Container(
+            margin: const EdgeInsets.only(right: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F6FA),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            onPressed: () {
-              Navigator.pushNamed(context, '/settings');
-            },
-            splashRadius: 22,
+            child: IconButton(
+              icon: const Icon(
+                PhosphorIconsRegular.gearSix,
+                size: 24,
+                color: Color(0xFF3B2357),
+              ),
+              onPressed: () {
+                Navigator.pushNamed(context, '/settings');
+              },
+              splashRadius: 24,
+            ),
           ),
-          const SizedBox(width: 4),
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8B4DFF)),
+                strokeWidth: 3,
+              ),
+            )
           : errorMessage != null
           ? Center(
               child: Padding(
@@ -648,14 +672,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, color: Colors.red[400], size: 48),
-                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.error_outline,
+                        color: Colors.red[400],
+                        size: 48,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     Text(
                       errorMessage!,
                       style: const TextStyle(
-                        color: Colors.red,
+                        color: Color(0xFF3B2357),
                         fontSize: 16,
                         fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -671,7 +714,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         textAlign: TextAlign.center,
                       ),
                     ],
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     ElevatedButton(
                       onPressed: () {
                         setState(() {
@@ -681,7 +724,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         });
                         _fetchProfileData();
                       },
-                      child: const Text("Retry"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B4DFF),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                        shadowColor: const Color(0xFF8B4DFF).withOpacity(0.3),
+                      ),
+                      child: const Text(
+                        "Retry",
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -694,18 +757,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.person_off, color: Colors.grey[400], size: 48),
-                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.person_off,
+                        color: Colors.grey[400],
+                        size: 48,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     const Text(
                       "No profile data found.",
                       style: TextStyle(
                         color: Color(0xFF3B2357),
                         fontSize: 16,
                         fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     ElevatedButton(
                       onPressed: () {
                         setState(() {
@@ -715,14 +797,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         });
                         _fetchProfileData();
                       },
-                      child: const Text("Reload"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B4DFF),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                        shadowColor: const Color(0xFF8B4DFF).withOpacity(0.3),
+                      ),
+                      child: const Text(
+                        "Reload",
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
             )
           : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: DefaultTextStyle(
                 style: const TextStyle(fontFamily: 'Poppins'),
                 child: Column(
@@ -730,15 +832,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     // --- Main Profile Card (imitate explore) ---
                     Container(
-                      margin: const EdgeInsets.only(bottom: 24),
+                      margin: const EdgeInsets.only(bottom: 28),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(24),
                         color: Colors.white,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
                           ),
                         ],
                       ),
@@ -746,7 +848,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           // Main image with gradient overlay
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(24),
                             child: SizedBox(
                               width: double.infinity,
                               height: mainImageHeight,
@@ -760,34 +862,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           fit: BoxFit.cover,
                                           placeholder: (context, url) =>
                                               Container(
-                                                color: Colors.grey[300],
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                    colors: [
+                                                      const Color(0xFFF8F6FA),
+                                                      const Color(0xFFE8E0F0),
+                                                    ],
+                                                  ),
+                                                ),
                                                 child: const Icon(
                                                   Icons.person,
                                                   size: 80,
-                                                  color: Colors.white,
+                                                  color: Color(0xFF8B4DFF),
                                                 ),
                                               ),
                                           errorWidget: (context, url, error) =>
                                               Container(
-                                                color: Colors.grey[300],
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                    colors: [
+                                                      const Color(0xFFF8F6FA),
+                                                      const Color(0xFFE8E0F0),
+                                                    ],
+                                                  ),
+                                                ),
                                                 child: const Icon(
                                                   Icons.person,
                                                   size: 80,
-                                                  color: Colors.white,
+                                                  color: Color(0xFF8B4DFF),
                                                 ),
                                               ),
                                         )
                                       : Container(
                                           width: double.infinity,
                                           height: mainImageHeight,
-                                          color: Colors.grey[300],
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                const Color(0xFFF8F6FA),
+                                                const Color(0xFFE8E0F0),
+                                              ],
+                                            ),
+                                          ),
                                           child: const Icon(
                                             Icons.person,
                                             size: 80,
-                                            color: Colors.white,
+                                            color: Color(0xFF8B4DFF),
                                           ),
                                         ),
-                                  // Gradient overlay at the bottom
+                                  // Enhanced gradient overlay at the bottom
                                   Positioned.fill(
                                     child: IgnorePointer(
                                       child: Container(
@@ -798,10 +927,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             colors: [
                                               Colors.transparent,
                                               Colors.transparent,
-                                              Color.fromARGB(120, 0, 0, 0),
-                                              Color.fromARGB(180, 0, 0, 0),
+                                              Color.fromARGB(100, 0, 0, 0),
+                                              Color.fromARGB(160, 0, 0, 0),
+                                              Color.fromARGB(200, 0, 0, 0),
                                             ],
-                                            stops: [0.0, 0.6, 0.85, 1.0],
+                                            stops: [0.0, 0.5, 0.75, 0.9, 1.0],
                                           ),
                                         ),
                                       ),
@@ -811,24 +941,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                           ),
-                          // Profession at top left
+                          // Enhanced profession badge at top left
                           if ((professionType ?? '').isNotEmpty)
                             Positioned(
-                              top: 16,
-                              left: 16,
+                              top: 20,
+                              left: 20,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 8,
+                                  horizontal: 16,
+                                  vertical: 10,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF3B2357),
-                                  borderRadius: BorderRadius.circular(22),
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFF8B4DFF),
+                                      Color(0xFF6D4B86),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(24),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.08),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
+                                      color: const Color(
+                                        0xFF8B4DFF,
+                                      ).withOpacity(0.3),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
@@ -838,9 +975,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     Icon(
                                       _getProfessionIcon(professionType),
                                       color: Colors.white,
-                                      size: 22,
+                                      size: 24,
                                     ),
-                                    const SizedBox(width: 7),
+                                    const SizedBox(width: 8),
                                     Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
@@ -850,23 +987,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                               professionType!.substring(1),
                                           style: const TextStyle(
                                             fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 16,
                                             color: Colors.white,
+                                            letterSpacing: -0.3,
                                           ),
                                         ),
                                         if ((professionName ?? '').isNotEmpty)
                                           Padding(
                                             padding: const EdgeInsets.only(
-                                              top: 1.5,
+                                              top: 2,
                                             ),
                                             child: Text(
                                               professionName!,
                                               style: const TextStyle(
                                                 fontFamily: 'Poppins',
-                                                fontWeight: FontWeight.w400,
-                                                fontSize: 12.5,
-                                                color: Colors.white,
+                                                fontWeight: FontWeight.w500,
+                                                fontSize: 13,
+                                                color: Color(0xE5FFFFFF),
                                               ),
                                             ),
                                           ),
@@ -876,14 +1014,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                               ),
                             ),
-                          // Edit button (top right of image)
+                          // Enhanced edit button (top right of image)
                           Positioned(
-                            top: 16,
-                            right: 16,
+                            top: 20,
+                            right: 20,
                             child: Material(
                               color: Colors.transparent,
                               child: InkWell(
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(24),
                                 onTap: () async {
                                   // Await the result from edit screen
                                   final result = await Navigator.push(
@@ -898,22 +1036,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     await _refreshProfileData();
                                   }
                                 },
-                                child: const CircleAvatar(
-                                  radius: 18,
-                                  backgroundColor: Colors.white,
-                                  child: Icon(
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(24),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.15),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
                                     PhosphorIconsRegular.pencilSimple,
-                                    size: 18,
-                                    color: Colors.black,
+                                    size: 20,
+                                    color: Color(0xFF3B2357),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                          // Name, gender, age at bottom left
+                          // Enhanced name, gender, age at bottom left
                           Positioned(
-                            left: 16,
-                            bottom: 32,
+                            left: 20,
+                            bottom: 36,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -921,31 +1069,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   name ?? '',
                                   style: const TextStyle(
                                     fontFamily: 'Poppins',
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 28,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 32,
                                     color: Colors.white,
+                                    letterSpacing: -0.5,
                                     shadows: [
                                       Shadow(
-                                        color: Colors.black38,
-                                        blurRadius: 6,
-                                        offset: Offset(0, 2),
+                                        color: Colors.black54,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 3),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 4),
                                 Text(
                                   '${(gender ?? '').isNotEmpty ? gender![0].toUpperCase() : "?"}, ${age != null ? age : "--"}',
                                   style: const TextStyle(
                                     fontFamily: 'Poppins',
                                     fontWeight: FontWeight.w600,
-                                    fontSize: 26,
+                                    fontSize: 28,
                                     color: Colors.white,
+                                    letterSpacing: -0.3,
                                     shadows: [
                                       Shadow(
-                                        color: Colors.black38,
-                                        blurRadius: 6,
-                                        offset: Offset(0, 2),
+                                        color: Colors.black54,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 3),
                                       ),
                                     ],
                                   ),
@@ -953,75 +1103,105 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ],
                             ),
                           ),
-                          // College and email at bottom right
+                          // Enhanced college and email at bottom right
                           if ((college ?? '').isNotEmpty ||
                               (email ?? '').isNotEmpty)
                             Positioned(
-                              right: 16,
-                              bottom: 32,
+                              right: 20,
+                              bottom: 36,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   if ((college ?? '').isNotEmpty)
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          PhosphorIconsRegular.buildings,
-                                          size: 16,
-                                          color: Colors.white,
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.15),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Colors.white.withOpacity(0.3),
+                                          width: 1,
                                         ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          college ?? "",
-                                          style: TextStyle(
-                                            fontFamily: 'Poppins',
-                                            color: Colors.white.withOpacity(
-                                              0.95,
-                                            ),
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
-                                            shadows: const [
-                                              Shadow(
-                                                color: Colors.black26,
-                                                blurRadius: 2,
-                                                offset: Offset(0, 1),
-                                              ),
-                                            ],
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            PhosphorIconsRegular.buildings,
+                                            size: 16,
+                                            color: Colors.white,
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  if ((email ?? '').isNotEmpty)
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          PhosphorIconsRegular.envelope,
-                                          size: 16,
-                                          color: Colors.white,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          email ?? "",
-                                          style: TextStyle(
-                                            fontFamily: 'Poppins',
-                                            color: Colors.white.withOpacity(
-                                              0.95,
-                                            ),
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
-                                            shadows: const [
-                                              Shadow(
-                                                color: Colors.black26,
-                                                blurRadius: 2,
-                                                offset: Offset(0, 1),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            college ?? "",
+                                            style: TextStyle(
+                                              fontFamily: 'Poppins',
+                                              color: Colors.white.withOpacity(
+                                                0.95,
                                               ),
-                                            ],
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              shadows: const [
+                                                Shadow(
+                                                  color: Colors.black26,
+                                                  blurRadius: 2,
+                                                  offset: Offset(0, 1),
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
+                                  if ((email ?? '').isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.15),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Colors.white.withOpacity(0.3),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            PhosphorIconsRegular.envelope,
+                                            size: 16,
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            email ?? "",
+                                            style: TextStyle(
+                                              fontFamily: 'Poppins',
+                                              color: Colors.white.withOpacity(
+                                                0.95,
+                                              ),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              shadows: const [
+                                                Shadow(
+                                                  color: Colors.black26,
+                                                  blurRadius: 2,
+                                                  offset: Offset(0, 1),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -1030,107 +1210,249 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     // --- End Main Card ---
 
-                    // Bio Section
-                    const Align(
-                      alignment: Alignment.center,
-                      child: Text(
-                        "Bio",
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                          color: Color(0xFF3B2357),
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10.0),
-                      child: Text(
-                        bio ?? "No bio provided.",
-                        textAlign: TextAlign.left,
-                        style: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 22,
-                          color: Color(0xFF3B2357),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    // About me Section
-                    const Text(
-                      "About me",
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 18,
-                        color: Color(0xFF3B2357),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    hobbies.isNotEmpty
-                        ? Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: hobbies.map<Widget>((hobby) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 7,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF8F6FA),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  hobby[0].toUpperCase() + hobby.substring(1),
-                                  style: const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 14,
-                                    color: Color(0xFF6D4B86),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          )
-                        : const Text(
-                            "No hobbies listed.",
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w400,
-                              fontSize: 13,
-                              color: Color(0xFF6D4B86),
-                            ),
+                    // Enhanced Bio Section
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
                           ),
-                    // Height Section (below About me)
-                    if (heightCm != null && heightCm! > 0) ...[
-                      const SizedBox(height: 18),
-                      Row(
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            PhosphorIconsRegular.ruler,
-                            color: Color(0xFF6D4B86),
-                            size: 18,
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF0E8FF),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  PhosphorIconsRegular.quotes,
+                                  color: Color(0xFF8B4DFF),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                "Bio",
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 20,
+                                  color: Color(0xFF3B2357),
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 7),
+                          const SizedBox(height: 16),
                           Text(
-                            "Height: $heightCm cm",
+                            bio ?? "No bio provided.",
+                            textAlign: TextAlign.left,
                             style: const TextStyle(
                               fontFamily: 'Poppins',
                               fontWeight: FontWeight.w500,
-                              fontSize: 15,
-                              color: Color(0xFF3B2357),
+                              fontSize: 16,
+                              color: Color(0xFF6D4B86),
+                              height: 1.5,
                             ),
                           ),
                         ],
                       ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Enhanced About me Section
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF0E8FF),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  PhosphorIconsRegular.heart,
+                                  color: Color(0xFF8B4DFF),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                "About me",
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 20,
+                                  color: Color(0xFF3B2357),
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          hobbies.isNotEmpty
+                              ? Wrap(
+                                  spacing: 10,
+                                  runSpacing: 10,
+                                  children: hobbies.map<Widget>((hobby) {
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            Color(0xFFF8F6FA),
+                                            Color(0xFFF0E8FF),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: const Color(0xFFE8E0F0),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        hobby[0].toUpperCase() +
+                                            hobby.substring(1),
+                                        style: const TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                          color: Color(0xFF6D4B86),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                )
+                              : Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8F6FA),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: const Color(0xFFE8E0F0),
+                                      width: 1,
+                                      style: BorderStyle.solid,
+                                    ),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(
+                                        PhosphorIconsRegular.info,
+                                        color: Color(0xFF8B4DFF),
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 12),
+                                      Text(
+                                        "No hobbies listed yet.",
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 14,
+                                          color: Color(0xFF6D4B86),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                        ],
+                      ),
+                    ),
+
+                    // Enhanced Height Section
+                    if (heightCm != null && heightCm! > 0) ...[
+                      const SizedBox(height: 24),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.06),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0E8FF),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(
+                                PhosphorIconsRegular.ruler,
+                                color: Color(0xFF8B4DFF),
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "Height",
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: Color(0xFF8B4DFF),
+                                  ),
+                                ),
+                                Text(
+                                  "$heightCm cm",
+                                  style: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                    color: Color(0xFF3B2357),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
 
                     const SizedBox(height: 24),
-                    // Additional Images Section (imitate explore)
+
+                    // Enhanced Additional Images Section
                     if (images.length > 1)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1138,19 +1460,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ...images.skip(1).map((imgUrl) {
                             if (imgUrl.isEmpty) return const SizedBox.shrink();
                             return Container(
-                              margin: const EdgeInsets.only(bottom: 20),
+                              margin: const EdgeInsets.only(bottom: 24),
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(18),
+                                borderRadius: BorderRadius.circular(24),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
+                                    color: Colors.black.withOpacity(0.12),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 8),
                                   ),
                                 ],
                               ),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(18),
+                                borderRadius: BorderRadius.circular(24),
                                 child: SizedBox(
                                   width: double.infinity,
                                   height: screenHeight * 0.8,
@@ -1160,20 +1482,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     height: screenHeight * 0.8,
                                     fit: BoxFit.cover,
                                     placeholder: (context, url) => Container(
-                                      color: Colors.grey[300],
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            const Color(0xFFF8F6FA),
+                                            const Color(0xFFE8E0F0),
+                                          ],
+                                        ),
+                                      ),
                                       child: const Icon(
                                         Icons.broken_image,
                                         size: 80,
-                                        color: Colors.white,
+                                        color: Color(0xFF8B4DFF),
                                       ),
                                     ),
                                     errorWidget: (context, url, error) =>
                                         Container(
-                                          color: Colors.grey[300],
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                const Color(0xFFF8F6FA),
+                                                const Color(0xFFE8E0F0),
+                                              ],
+                                            ),
+                                          ),
                                           child: const Icon(
                                             Icons.broken_image,
                                             size: 80,
-                                            color: Colors.white,
+                                            color: Color(0xFF8B4DFF),
                                           ),
                                         ),
                                   ),
@@ -1184,31 +1524,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
 
-                    // Prompts Section - moved to end
+                    // Enhanced Prompts Section
                     if (_promptAnswers.isNotEmpty) ...[
-                      ExpandablePrompts(prompts: _promptAnswers),
+                      const SizedBox(height: 24),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.06),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ExpandablePrompts(prompts: _promptAnswers),
+                      ),
                     ] else if (_isPromptsLoading) ...[
                       const SizedBox(height: 32),
-                      const Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF8B4DFF),
+                      Container(
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.06),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF8B4DFF),
+                            ),
+                            strokeWidth: 3,
                           ),
                         ),
                       ),
                     ] else if (_promptsError != null) ...[
                       const SizedBox(height: 32),
-                      Center(
-                        child: Text(
-                          _promptsError!,
-                          style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            color: Colors.red,
-                            fontSize: 14,
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.06),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            _promptsError!,
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              color: Colors.red,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ),
                     ],
+
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),

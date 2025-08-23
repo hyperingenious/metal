@@ -1,27 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
 import '../appwrite/appwrite.dart';
+import '../services/config_service.dart';
 import 'otp_screen.dart';
 
-// Import all ids from .env using String.fromEnvironment
-const String appwriteEndpoint = String.fromEnvironment('APPWRITE_ENDPOINT');
-const String projectId = String.fromEnvironment('PROJECT_ID');
-const String databaseId = String.fromEnvironment('DATABASE_ID');
-const String storageBucketId = String.fromEnvironment('STORAGE_BUCKET_ID');
-const String biodataCollectionId = String.fromEnvironment('BIODATA_COLLECTIONID');
-const String blockedCollectionId = String.fromEnvironment('BLOCKED_COLLECTIONID');
-const String completionStatusCollectionId = String.fromEnvironment('COMPLETION_STATUS_COLLECTIONID');
-const String connectionsCollectionId = String.fromEnvironment('CONNECTIONS_COLLECTIONID');
-const String hasShownCollectionId = String.fromEnvironment('HAS_SHOWN_COLLECTIONID');
-const String hobbiesCollectionId = String.fromEnvironment('HOBBIES_COLLECTIONID');
-const String imageCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
-const String locationCollectionId = String.fromEnvironment('LOCATION_COLLECTIONID');
-const String messageInboxCollectionId = String.fromEnvironment('MESSAGE_INBOX_COLLECTIONID');
-const String messagesCollectionId = String.fromEnvironment('MESSAGES_COLLECTIONID');
-const String notificationsCollectionId = String.fromEnvironment('NOTIFICATIONS_COLLECTIONID');
-const String preferenceCollectionId = String.fromEnvironment('PREFERENCE_COLLECTIONID');
-const String reportsCollectionId = String.fromEnvironment('REPORTS_COLLECTIONID');
-const String usersCollectionId = String.fromEnvironment('USERS_COLLECTIONID');
+// Import all ids from ConfigService
+final appwriteEndpoint = ConfigService().get('APPWRITE_ENDPOINT');
+final projectId = ConfigService().get('PROJECT_ID');
+final databaseId = ConfigService().get('DATABASE_ID');
+final storageBucketId = ConfigService().get('STORAGE_BUCKET_ID');
+final biodataCollectionId = ConfigService().get('BIODATA_COLLECTIONID');
+final blockedCollectionId = ConfigService().get('BLOCKED_COLLECTIONID');
+final completionStatusCollectionId = ConfigService().get(
+  'COMPLETION_STATUS_COLLECTIONID',
+);
+final connectionsCollectionId = ConfigService().get('CONNECTIONS_COLLECTIONID');
+final hasShownCollectionId = ConfigService().get('HAS_SHOWN_COLLECTIONID');
+final hobbiesCollectionId = ConfigService().get('HOBBIES_COLLECTIONID');
+final imageCollectionId = ConfigService().get('IMAGE_COLLECTIONID');
+final locationCollectionId = ConfigService().get('LOCATION_COLLECTIONID');
+final messageInboxCollectionId = ConfigService().get(
+  'MESSAGE_INBOX_COLLECTIONID',
+);
+final messagesCollectionId = ConfigService().get('MESSAGES_COLLECTIONID');
+final notificationsCollectionId = ConfigService().get(
+  'NOTIFICATIONS_COLLECTIONID',
+);
+final preferenceCollectionId = ConfigService().get('PREFERENCE_COLLECTIONID');
+final reportsCollectionId = ConfigService().get('REPORTS_COLLECTIONID');
+final usersCollectionId = ConfigService().get('USERS_COLLECTIONID');
 
 class PhoneInputScreen extends StatefulWidget {
   const PhoneInputScreen({super.key});
@@ -49,9 +56,9 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Logout failed")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Logout failed")));
       }
     }
   }
@@ -107,10 +114,7 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [
-                        colorScheme.primary,
-                        colorScheme.secondary,
-                      ],
+                      colors: [colorScheme.primary, colorScheme.secondary],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -140,7 +144,9 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                 Text(
                   "We'll send you a verification code",
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7) ?? Colors.grey[600],
+                    color:
+                        theme.textTheme.bodyMedium?.color?.withOpacity(0.7) ??
+                        Colors.grey[600],
                   ),
                 ),
                 const SizedBox(height: 32),

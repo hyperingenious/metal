@@ -276,19 +276,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = const Color(0xFF6D4B86);
+    final accentColor = const Color(0xFF8B4DFF);
 
     // Replace MainLoader with centered CircularProgressIndicator
     if (_loading || _saving) {
       return Scaffold(
-        body: Center(child: CircularProgressIndicator(color: accentColor)),
+        backgroundColor: const Color(0xFFF8F6FA),
+        body: Center(
+          child: CircularProgressIndicator(color: accentColor, strokeWidth: 3),
+        ),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.white, // Set background color to white
+      backgroundColor: const Color(0xFFF8F6FA),
       appBar: AppBar(
         elevation: 0,
+        backgroundColor: Colors.white,
+        shadowColor: Colors.black.withValues(alpha: 0.06),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF3B2357)),
           onPressed: () => Navigator.of(context).pop(),
@@ -298,161 +303,230 @@ class _SettingsScreenState extends State<SettingsScreen> {
           'Settings',
           style: TextStyle(
             fontFamily: 'Poppins',
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
             color: Color(0xFF3B2357),
+            letterSpacing: -0.2,
           ),
         ),
         actions: [
           if (_isEdited && !_saving)
             TextButton(
               onPressed: _saveSettings,
+              style: TextButton.styleFrom(
+                foregroundColor: accentColor,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               child: const Text(
                 'Save',
                 style: TextStyle(
-                  color: Color(0xFF3B2357),
                   fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
                 ),
               ),
             ),
         ],
       ),
       body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Divider(color: Color(0xFFBFA2D9), height: 1, thickness: 1),
-            Padding(
-              padding: const EdgeInsets.only(left: 20, right: 20, top: 32),
+            // Toggles Card
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Hide name',
+                    children: const [
+                      Icon(
+                        Icons.lock_outline,
+                        color: Color(0xFF8B4DFF),
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Privacy',
                         style: TextStyle(
                           fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w400,
-                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
                           color: Color(0xFF3B2357),
                         ),
                       ),
-                      Switch(
-                        value: _hideName,
-                        onChanged: (val) {
-                          setState(() {
-                            _hideName = val;
-                          });
-                          _saveToggleSettings(); // Save immediately when changed
-                        },
-                        activeColor: const Color(0xFF3B2357),
-                        inactiveThumbColor: const Color(0xFFBFA2D9),
-                        inactiveTrackColor: const Color(0xFFE5D3F3),
-                      ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'When enabled, only the first letter of your name will be visible to others',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w400,
-                      fontSize: 13,
-                      color: Color(0xFF6B7280),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(
+                      Icons.badge_outlined,
+                      color: Color(0xFF6D4B86),
+                    ),
+                    title: const Text(
+                      'Hide name',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: Color(0xFF3B2357),
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'Only the first letter of your name will be visible to others',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w400,
+                        fontSize: 12.5,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                    trailing: Switch(
+                      value: _hideName,
+                      onChanged: (val) {
+                        setState(() {
+                          _hideName = val;
+                        });
+                        _saveToggleSettings();
+                      },
+                      activeColor: const Color(0xFF3B2357),
+                      inactiveThumbColor: const Color(0xFFBFA2D9),
+                      inactiveTrackColor: const Color(0xFFE5D3F3),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Incognito mode',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w400,
-                          fontSize: 15,
-                          color: Color(0xFF3B2357),
-                        ),
-                      ),
-                      Switch(
-                        value: _incognitoMode,
-                        onChanged: (val) {
-                          setState(() {
-                            _incognitoMode = val;
-                          });
-                          _saveToggleSettings(); // Save immediately when changed
-                        },
-                        activeColor: const Color(0xFF3B2357),
-                        inactiveThumbColor: const Color(0xFFBFA2D9),
-                        inactiveTrackColor: const Color(0xFFE5D3F3),
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 8),
-                  const Text(
-                    "Your profile will be hidden from others and you won't appear in recommendations. You can still browse anonymously",
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w400,
-                      fontSize: 13,
-                      color: Color(0xFF6B7280),
+                  const Divider(height: 20),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(
+                      Icons.visibility_off_outlined,
+                      color: Color(0xFF6D4B86),
+                    ),
+                    title: const Text(
+                      'Incognito mode',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: Color(0xFF3B2357),
+                      ),
+                    ),
+                    subtitle: const Text(
+                      "Hide your profile from recommendations while you browse anonymously",
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w400,
+                        fontSize: 12.5,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                    trailing: Switch(
+                      value: _incognitoMode,
+                      onChanged: (val) {
+                        setState(() {
+                          _incognitoMode = val;
+                        });
+                        _saveToggleSettings();
+                      },
+                      activeColor: const Color(0xFF3B2357),
+                      inactiveThumbColor: const Color(0xFFBFA2D9),
+                      inactiveTrackColor: const Color(0xFFE5D3F3),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 40), // More space after toggle switches
-            // Age Range Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+
+            const SizedBox(height: 16),
+
+            // Age Range Card
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "How old are they?",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
-                      color: Color(0xFF3B2357),
-                    ),
+                  Row(
+                    children: const [
+                      Icon(
+                        Icons.cake_outlined,
+                        color: Color(0xFF8B4DFF),
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        "How old are they?",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Poppins',
+                          color: Color(0xFF3B2357),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12), // More space after heading
+                  const SizedBox(height: 12),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 14,
-                    ), // Slightly more padding
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
+                      color: const Color(0xFFF8F6FA),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: Colors.grey.withOpacity(0.2),
+                        color: const Color(0xFFE8E0F0),
                         width: 1,
                       ),
                     ),
                     child: Text(
                       "Between ${_minAge ?? ''} and ${_maxAge ?? ''}",
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF3B2357),
-                        fontFamily: 'SF Pro Display',
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF3B2357),
+                        fontFamily: 'Poppins',
                       ),
                     ),
                   ),
+                  const SizedBox(height: 10),
                   SliderTheme(
                     data: SliderTheme.of(context).copyWith(
                       activeTrackColor: accentColor,
-                      inactiveTrackColor: accentColor.withOpacity(0.2),
+                      inactiveTrackColor: accentColor.withValues(alpha: 0.2),
                       thumbColor: accentColor,
-                      overlayColor: accentColor.withOpacity(0.15),
-                      trackHeight: 2,
+                      overlayColor: accentColor.withValues(alpha: 0.15),
+                      trackHeight: 4,
                       thumbShape: const RoundSliderThumbShape(
                         enabledThumbRadius: 8,
                       ),
@@ -465,7 +539,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       min: minAllowedAge.toDouble(),
                       max: maxAllowedAge.toDouble(),
                       activeColor: accentColor,
-                      inactiveColor: accentColor.withOpacity(0.2),
+                      inactiveColor: accentColor.withValues(alpha: 0.2),
                       onChanged: (RangeValues values) {
                         setState(() {
                           _minAge = values.start.round();
@@ -479,57 +553,103 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       },
                     ),
                   ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        minAllowedAge.toString(),
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 12,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                      Text(
+                        maxAllowedAge.toString(),
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 12,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 20), // More space between sections
-            // Max Distance Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+
+            const SizedBox(height: 16),
+
+            // Distance Card
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "How far away are they?",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
-                      color: Color(0xFF3B2357),
-                    ),
+                  Row(
+                    children: const [
+                      Icon(
+                        Icons.place_outlined,
+                        color: Color(0xFF8B4DFF),
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        "How far away are they?",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Poppins',
+                          color: Color(0xFF3B2357),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12), // More space after heading
+                  const SizedBox(height: 12),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 14,
-                    ), // Slightly more padding
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
+                      color: const Color(0xFFF8F6FA),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: Colors.grey.withOpacity(0.2),
+                        color: const Color(0xFFE8E0F0),
                         width: 1,
                       ),
                     ),
                     child: Text(
                       "Up to ${_maxDistance ?? ''} kilometres away",
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF3B2357),
-                        fontFamily: 'SF Pro Display',
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF3B2357),
+                        fontFamily: 'Poppins',
                       ),
                     ),
                   ),
+                  const SizedBox(height: 10),
                   SliderTheme(
                     data: SliderTheme.of(context).copyWith(
                       activeTrackColor: accentColor,
-                      inactiveTrackColor: accentColor.withOpacity(0.2),
+                      inactiveTrackColor: accentColor.withValues(alpha: 0.2),
                       thumbColor: accentColor,
-                      overlayColor: accentColor.withOpacity(0.15),
-                      trackHeight: 2,
+                      overlayColor: accentColor.withValues(alpha: 0.15),
+                      trackHeight: 4,
                       thumbShape: const RoundSliderThumbShape(
                         enabledThumbRadius: 8,
                       ),
@@ -546,49 +666,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       },
                     ),
                   ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '$minDistance km',
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 12,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                      Text(
+                        '$maxDistance km',
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 12,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 120), // More space before save button
-            // Remove the Save Button section entirely
+
+            const SizedBox(height: 24),
+
             // Logout Button
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF3B2357), width: 1),
+                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: const Color(0xFF3B2357),
-                    shadowColor: Colors.transparent,
-                    elevation: 0,
+                    backgroundColor: accentColor,
+                    foregroundColor: Colors.white,
+                    shadowColor: accentColor.withValues(alpha: 0.25),
+                    elevation: 2,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    padding: const EdgeInsets.symmetric(vertical: 18),
                     textStyle: const TextStyle(
                       fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                       fontSize: 16,
                     ),
                   ),
                   onPressed: () {
                     _logout();
                   },
-                  icon: const Icon(
-                    Icons.logout,
-                    size: 20,
-                    color: Color(0xFF3B2357),
-                  ),
+                  icon: const Icon(Icons.logout, size: 20, color: Colors.white),
                   label: const Text('Log out'),
                 ),
               ),
             ),
-            const SizedBox(height: 20), // Better spacing before delete account
+
+            const SizedBox(height: 16),
             Center(
               child: TextButton(
                 onPressed: () {
@@ -598,14 +745,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   'Delete account',
                   style: TextStyle(
                     fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w400,
+                    fontWeight: FontWeight.w600,
                     fontSize: 15,
                     color: Colors.red,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 32), // More bottom padding
+
+            const SizedBox(height: 24),
           ],
         ),
       ),

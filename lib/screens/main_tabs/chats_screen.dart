@@ -352,10 +352,54 @@ class _ChatsScreenState extends State<ChatsScreen> {
     );
   }
 
+  Widget _buildAvatar(Map<String, dynamic> chat) {
+    final hasPhoto = (chat['partnerPhotoUrl'] != null &&
+        chat['partnerPhotoUrl'].toString().isNotEmpty);
+
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [Color(0xFFCF9BFF), Color(0xFFB96AFF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFB96AFF).withOpacity(0.20),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFFF3E6FA),
+          image: hasPhoto
+              ? DecorationImage(
+                  image: NetworkImage(chat['partnerPhotoUrl']),
+                  fit: BoxFit.cover,
+                )
+              : null,
+        ),
+        child: (!hasPhoto)
+            ? const Icon(
+                Icons.person,
+                color: Color(0xFFB96AFF),
+                size: 24,
+              )
+            : null,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Changed from Color(0xFFF3E6FA) to white
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(64),
         child: AppBar(
@@ -368,8 +412,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.10),
-                  blurRadius: 12,
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
@@ -378,14 +422,14 @@ class _ChatsScreenState extends State<ChatsScreen> {
           title: Padding(
             padding: const EdgeInsets.only(left: 24, top: 8, bottom: 8),
             child: Row(
-              children: [
-                const Icon(
+              children: const [
+                Icon(
                   Icons.chat_bubble_outline_rounded,
                   color: Colors.black,
                   size: 22,
                 ),
-                const SizedBox(width: 12),
-                const Text(
+                SizedBox(width: 12),
+                Text(
                   'Chats',
                   style: TextStyle(
                     fontFamily: 'Poppins',
@@ -400,273 +444,250 @@ class _ChatsScreenState extends State<ChatsScreen> {
           ),
         ),
       ),
-      body: _loading
-          ? const Center(
-              child: SizedBox(
-                width: 48,
-                height: 48,
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFB96AFF)),
-                  strokeWidth: 4,
-                ),
-              ),
-            )
-          : _error
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red[400], size: 40),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Failed to load chats',
-                    style: TextStyle(
-                      color: Color(0xFFB96AFF),
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : _chats.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.forum_outlined,
-                    color: Color(0xFFB96AFF),
-                    size: 60,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No connections made yet',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: Color(0xFF3B2357),
-                      letterSpacing: 0.2,
-                      fontFamily: 'Poppins',
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    "Start a conversation and make new friends!",
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      color: Color(0xFF6D4B86),
-                      fontFamily: 'Poppins',
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: () async {
-                setState(() {
-                  _loading = true;
-                });
-                await _loadCachedChatsAndFetch();
-              },
-              child: ListView.separated(
-                padding: const EdgeInsets.only(top: 12, bottom: 12),
-                itemCount: _chats.length,
-                separatorBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
-                  child: Divider(
-                    color: const Color(0xFFE5D3F3),
-                    thickness: 1,
-                    height: 1,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFFDF9FF), Color(0xFFF6EEFF)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: _loading
+            ? const Center(
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFB96AFF)),
+                    strokeWidth: 4,
                   ),
                 ),
-                itemBuilder: (context, index) {
-                  final chat = _chats[index];
-                  final int unreadCount = chat['unreadCount'] ?? 0;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    child: Material(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      elevation: 2,
-                      shadowColor: const Color(0xFFB96AFF).withOpacity(0.08),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(20),
-                        onTap: () async {
-                          final String userId = chat['partnerId'] ?? '';
-                          final String connectionId = chat['connectionId'] ?? '';
-                          
-                          // Navigate to chat screen and wait for result
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ChatScreen(
-                                userId: userId,
-                                connectionId: connectionId,
-                              ),
-                            ),
-                          );
-                          
-                          // Refresh chat list when returning from chat screen
-                          if (result == true || mounted) {
-                            await _loadCachedChatsAndFetch();
-                          }
-                        },
-                        onLongPress: () {
-                          _showDeleteConnectionModal(context, chat['connectionId']);
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                            horizontal: 4,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFFB96AFF,
-                                      ).withOpacity(0.18),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                  color: const Color(0xFFF3E6FA),
-                                  image:
-                                      (chat['partnerPhotoUrl'] != null &&
-                                          chat['partnerPhotoUrl']
-                                              .toString()
-                                              .isNotEmpty)
-                                      ? DecorationImage(
-                                          image: NetworkImage(
-                                            chat['partnerPhotoUrl'],
-                                          ),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : null,
-                                ),
-                                child:
-                                    (chat['partnerPhotoUrl'] == null ||
-                                        chat['partnerPhotoUrl']
-                                            .toString()
-                                            .isEmpty)
-                                    ? const Icon(
-                                        Icons.person,
-                                        color: Color(0xFFB96AFF),
-                                        size: 24,
-                                      )
-                                    : null,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Flexible(
-                                          child: Text(
-                                            chat['partnerName'] ?? 'Unknown',
-                                            style: const TextStyle(
-                                              fontFamily: 'Poppins',
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 17,
-                                              color: Color(0xFF3B2357),
-                                              height: 1.1,
-                                              letterSpacing: 0.1,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        if (unreadCount > 0)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              left: 8.0,
-                                            ),
-                                            child: Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 2,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFB96AFF),
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: const Color(
-                                                      0xFFB96AFF,
-                                                    ).withOpacity(0.18),
-                                                    blurRadius: 6,
-                                                    offset: const Offset(0, 2),
-                                                  ),
-                                                ],
-                                              ),
-                                              child: Text(
-                                                unreadCount.toString(),
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontFamily: 'Poppins',
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 12.5,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      chat['lastMessageDisplay'] ??
-                                          'No messages yet',
-                                      style: TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontWeight: FontWeight.w400,
-                                        fontSize: 13.5,
-                                        color: unreadCount > 0
-                                            ? const Color(0xFFB96AFF)
-                                            : const Color(0xFF6D4B86),
-                                        height: 1.2,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              SizedBox(
-                                width: 20,
-                                child: Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  color: const Color(
-                                    0xFFB96AFF,
-                                  ).withOpacity(0.7),
-                                  size: 20,
-                                ),
-                              ),
-                            ],
+              )
+            : _error
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red[400], size: 40),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Failed to load chats',
+                          style: TextStyle(
+                            color: Color(0xFFB96AFF),
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                  );
-                },
-              ),
-            ),
+                  )
+                : _chats.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(
+                              Icons.forum_outlined,
+                              color: Color(0xFFB96AFF),
+                              size: 60,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No connections made yet',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: Color(0xFF3B2357),
+                                letterSpacing: 0.2,
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              "Start a conversation and make new friends!",
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                color: Color(0xFF6D4B86),
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: () async {
+                          setState(() {
+                            _loading = true;
+                          });
+                          await _loadCachedChatsAndFetch();
+                        },
+                        child: ListView.separated(
+                          physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          ),
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                          itemCount: _chats.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            final chat = _chats[index];
+                            final int unreadCount = chat['unreadCount'] ?? 0;
+
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(0xFFEADAF7),
+                                  width: 1,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFB96AFF).withOpacity(0.06),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(20),
+                                  onTap: () async {
+                                    final String userId = chat['partnerId'] ?? '';
+                                    final String connectionId = chat['connectionId'] ?? '';
+                                    
+                                    // Navigate to chat screen and wait for result
+                                    final result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ChatScreen(
+                                          userId: userId,
+                                          connectionId: connectionId,
+                                        ),
+                                      ),
+                                    );
+                                    
+                                    // Refresh chat list when returning from chat screen
+                                    if (result == true || mounted) {
+                                      await _loadCachedChatsAndFetch();
+                                    }
+                                  },
+                                  onLongPress: () {
+                                    _showDeleteConnectionModal(context, chat['connectionId']);
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                      horizontal: 12,
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        _buildAvatar(chat),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      chat['partnerName'] ?? 'Unknown',
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: TextStyle(
+                                                        fontFamily: 'Poppins',
+                                                        fontWeight: FontWeight.w700,
+                                                        fontSize: 16.5,
+                                                        color: const Color(0xFF3B2357),
+                                                        height: 1.1,
+                                                        letterSpacing: 0.1,
+                                                        shadows: [
+                                                          Shadow(
+                                                            offset: const Offset(0, 0),
+                                                            blurRadius: 0.4,
+                                                            color: Colors.black.withOpacity(0.05),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if (unreadCount > 0)
+                                                    Container(
+                                                      margin: const EdgeInsets.only(left: 8),
+                                                      padding: const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 2,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(0xFFB96AFF),
+                                                        borderRadius: BorderRadius.circular(12),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color: const Color(0xFFB96AFF).withOpacity(0.22),
+                                                            blurRadius: 8,
+                                                            offset: const Offset(0, 3),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      child: Text(
+                                                        unreadCount.toString(),
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontFamily: 'Poppins',
+                                                          fontWeight: FontWeight.w600,
+                                                          fontSize: 12.5,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                chat['lastMessageDisplay'] ?? 'No messages yet',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontFamily: 'Poppins',
+                                                  fontWeight: FontWeight.w400,
+                                                  fontSize: 13.5,
+                                                  color: unreadCount > 0
+                                                      ? const Color(0xFFB96AFF)
+                                                      : const Color(0xFF6D4B86),
+                                                  height: 1.2,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Container(
+                                          width: 28,
+                                          height: 28,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFB96AFF).withOpacity(0.10),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons.arrow_forward_ios_rounded,
+                                              color: Color(0xFFB96AFF),
+                                              size: 16,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+      ),
     );
   }
 }

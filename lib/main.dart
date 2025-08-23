@@ -5,8 +5,10 @@ import 'package:lushh/screens/home_screen.dart';
 import 'package:lushh/screens/phone_input_screen.dart';
 import 'package:lushh/screens/profile_completion/profile_completion_router.dart';
 import 'package:lushh/screens/settings_screen.dart';
+import 'package:lushh/services/config_service.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -20,9 +22,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
-        scaffoldBackgroundColor: const Color(
-          0xFFFAFAFA,
-        ), // Very light background for entire app
+        scaffoldBackgroundColor: const Color(0xFFFAFAFA),
       ),
       initialRoute: '/',
       onGenerateRoute: (RouteSettings settings) {

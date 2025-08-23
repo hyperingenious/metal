@@ -1,0 +1,2423 @@
+import 'package:flutter/material.dart';
+import 'package:appwrite/appwrite.dart';
+import 'package:lushh/appwrite/appwrite.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io' show Platform;
+import 'dart:math'; // Added for distance calculation
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:lushh/widgets/expandable_prompts.dart';
+
+// Environment variables for collections
+const databaseId = String.fromEnvironment('DATABASE_ID');
+const connectionsCollectionId = String.fromEnvironment(
+  'CONNECTIONS_COLLECTIONID',
+);
+const locationCollectionId = String.fromEnvironment('LOCATION_COLLECTIONID');
+const updateNowCollectionId = String.fromEnvironment('UPDATE_NOW_COLLECTIONID');
+
+// Questions for prompts based on gender
+final List<Map<String, dynamic>> _femaleQuestions = [
+  {
+    'question': 'I know I\'ve found a good match when…',
+    'options': [
+      'The conversation flows naturally',
+      'He makes me laugh',
+      'I feel a genuine connection',
+      'He\'s a good listener',
+      'We both forget to check our phones',
+      'He\'s a good friend',
+      'He challenges me to be a better person',
+      'We have the same sense of humor',
+      'He makes me feel safe',
+      'We have a mutual respect',
+    ],
+  },
+  {
+    'question': 'A quality I admire most on a date is…',
+    'options': [
+      'Their ability to listen',
+      'Their confidence',
+      'Their thoughtfulness',
+      'Their sense of humor',
+      'Their manners',
+      'Their ability to make me feel comfortable',
+      'Their respect for my time',
+      'Their ability to be present',
+      'Their kindness',
+      'Their honesty',
+    ],
+  },
+  {
+    'question': 'The best way to get to know me is…',
+    'options': [
+      'Over a good meal',
+      'By asking me about my passions',
+      'By having a deep conversation',
+      'By just letting me be myself',
+      'By seeing me with my friends',
+      'By sharing a new experience with me',
+      'Over a cup of tea',
+      'By asking me about my dreams',
+      'By just hanging out',
+      'By trying a new cafe',
+    ],
+  },
+  {
+    'question': 'My communication style is best described as…',
+    'options': [
+      'Direct and honest',
+      'I prefer to talk things out',
+      'I\'m a good listener',
+      'I\'m a good texter',
+      'I\'m a great communicator',
+      'I\'m a good listener, but I\'m also a great talker',
+      'I\'m a good texter, but I prefer to talk on the phone',
+      'I\'m a good communicator, but I\'m also a good listener',
+      'I\'m a good communicator, but I\'m also a good texter',
+      'I\'m a good communicator, but I also like to have fun',
+    ],
+  },
+  {
+    'question': 'My perfect first date would be…',
+    'options': [
+      'A long walk in a park',
+      'Coffee at a local cafe',
+      'Trying out a new restaurant or bar',
+      'A quiet dinner where we can talk',
+      'Getting an ice cream',
+      'An adventurous road trip to a new city',
+      'Bowling or mini golf',
+      'A comedy show',
+      'Going to a live music show',
+      'A picnic',
+    ],
+  },
+  {
+    'question': 'The most romantic gesture to me is…',
+    'options': [
+      'A thoughtful text after the date',
+      'A handwritten note',
+      'A surprise visit',
+      'A surprise trip',
+      'A home-cooked meal',
+      'A thoughtful gift',
+      'A long walk with a good conversation',
+      'A simple hug',
+      'A compliment',
+      'A great date',
+    ],
+  },
+  {
+    'question': 'My biggest pet peeve is…',
+    'options': [
+      'When someone is on their phone during a date',
+      'A messy car',
+      'Being late',
+      'Rude waiters',
+      'When someone chews with their mouth open',
+      'A person with no manners',
+      'When someone is a bad driver',
+      'A person who talks too much about themselves',
+      'Being ignored',
+      'When someone is a bad listener',
+    ],
+  },
+];
+
+final List<Map<String, dynamic>> _maleQuestions = [
+  {
+    'question': 'The quality I admire most in a relationship is…',
+    'options': [
+      'Mutual respect',
+      'Unconditional support',
+      'Shared laughter',
+      'Honesty and open communication',
+      'Trust and loyalty',
+      'A sense of adventure',
+      'The ability to grow together',
+      'Thoughtfulness',
+      'Emotional intelligence',
+      'Good communication',
+    ],
+  },
+  {
+    'question': 'I feel most connected when we are…',
+    'options': [
+      'Having a deep conversation over coffee',
+      'Laughing at something completely silly',
+      'Exploring a new place together',
+      'Cooking a meal as a team',
+      'Just being quiet and comfortable in each other\'s presence',
+      'Talking about our dreams and goals',
+      'Sharing our favorite music with each other',
+      'Debating a movie\'s plot for hours',
+      'Working on a project together',
+      'Talking on a long drive',
+    ],
+  },
+  {
+    'question': 'I\'m looking for a partner who can challenge me to…',
+    'options': [
+      'Step outside my comfort zone',
+      'Try new things',
+      'Think more deeply about things',
+      'Be more adventurous',
+      'Improve my communication skills',
+      'Be more emotionally intelligent',
+      'Read more books',
+      'Pursue my dreams',
+      'Be a better version of myself',
+    ],
+  },
+  {
+    'question': 'The most romantic thing I can do for someone is…',
+    'options': [
+      'Making them a home-cooked meal',
+      'Planning a surprise trip or adventure',
+      'Making them a cup of tea',
+      'Showing them I\'m listening by remembering the little things',
+      'Supporting them when they\'re pursuing a dream',
+      'Giving them a relaxing massage after a long day',
+      'Bringing them flowers just because',
+      'A romantic date',
+      'Sending a thoughtful text just to say I\'m thinking of them',
+      'Telling them how I feel',
+    ],
+  },
+  {
+    'question': 'The perfect gift I could receive is…',
+    'options': [
+      'A thoughtful, handwritten note',
+      'An experience, not a thing',
+      'Tickets to a sports game or a concert',
+      'Something that shows you were really listening',
+      'A surprise weekend trip',
+      'A great book',
+      'A great meal',
+      'Something to help me with my hobby',
+      'A day of no responsibilities',
+      'Anything handmade',
+    ],
+  },
+  {
+    'question': 'My ideal way to be comforted after a bad day is…',
+    'options': [
+      'A long, quiet walk',
+      'A hug and a quiet movie night',
+      'A great home-cooked meal',
+      'A little bit of space to myself',
+      'To talk it out with a good listener',
+      'A good workout',
+      'A surprise',
+      'A good beer',
+      'A long drive with some good music',
+      'A cup of tea',
+    ],
+  },
+  {
+    'question': 'A perfect Friday night looks like…',
+    'options': [
+      'A low-key dinner with friends',
+      'A great movie on the couch with some comfort food',
+      'Quality time with parents or siblings',
+      'Trying out a new restaurant or bar',
+      'Getting a good workout in after a long week',
+      'A board game night with a few close friends',
+      'Going to a live music show',
+      'An adventurous road trip to a new place',
+      'Grilling and chilling with a beer',
+      'Unplugging and enjoying some peace and quiet',
+      'A spontaneous trip to the mountains',
+    ],
+  },
+];
+
+class ExploreScreen extends StatefulWidget {
+  const ExploreScreen({super.key});
+
+  @override
+  State<ExploreScreen> createState() => _ExploreScreenState();
+}
+
+class _ExploreScreenState extends State<ExploreScreen>
+    with SingleTickerProviderStateMixin {
+  int _currentProfileIndex = 0;
+  int _currentPage = 0;
+  List<Map<String, dynamic>> _profiles = [];
+  bool _isLoading = true;
+  String? _jwt;
+  bool _fetchingNextBatch = false;
+  bool _hasError = false;
+  bool _noMoreProfiles = false;
+  bool _sendingInvite = false;
+
+  // Preload buffer for next batch
+  List<Map<String, dynamic>> _preloadedProfiles = [];
+  bool _preloading = false;
+
+  // Animation for swipe
+  late AnimationController _swipeController;
+  late Animation<Offset> _swipeAnimation;
+  late Animation<double> _swipeRotationAnimation;
+  bool _isSwiping = false;
+  double _dragDx = 0.0;
+
+  // For undo/Back functionality
+  final List<int> _profileHistory = [];
+
+  // For distance calculation
+  double? _distanceKm;
+  bool _distanceLoading = false;
+  String? _distanceError;
+
+  // Scroll controller for scrolling to top
+  final ScrollController _scrollController = ScrollController();
+
+  // Add new variables for card stack
+  static const int _maxVisibleCards = 3;
+  static const double _cardSpacing = 8.0;
+  static const double _cardScale = 0.95;
+  static const double _cardOpacity = 0.8;
+
+  // Use different keys for different OS for native localstorage separation
+  static String get _localProfilesKey {
+    if (Platform.isIOS) return 'explore_profiles_ios';
+    if (Platform.isAndroid) return 'explore_profiles_android';
+    return 'explore_profiles';
+  }
+
+  static String get _localPageKey {
+    if (Platform.isIOS) return 'explore_profiles_page_ios';
+    if (Platform.isAndroid) return 'explore_profiles_page_android';
+    return 'explore_profiles_page';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initAndFetchProfiles();
+    _checkForUpdates(); // Add update check
+    _swipeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _swipeAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _swipeController, curve: Curves.easeOut));
+    _swipeRotationAnimation = Tween<double>(
+      begin: 0.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _swipeController, curve: Curves.easeOut));
+    _swipeController.addStatusListener((status) async {
+      if (status == AnimationStatus.completed) {
+        // After animation, move to next profile (do not remove from list)
+        await _onSwipeLeftOrRight(removeWithAnimation: false);
+        _swipeController.reset();
+        setState(() {
+          _isSwiping = false;
+          _dragDx = 0.0;
+        });
+      }
+    });
+    // Remove this line - we'll call it after profiles are loaded
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _fetchAndSetDistance();
+    // });
+  }
+
+  @override
+  void didUpdateWidget(covariant ExploreScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _fetchAndSetDistance();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _fetchAndSetDistance();
+  }
+
+  @override
+  void dispose() {
+    _swipeController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// Robustly fetches JWT and then fetches profiles, always ensuring a fresh JWT is used.
+  Future<void> _robustFetchProfiles({int page = 0, bool reset = true}) async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _fetchingNextBatch = false;
+      _noMoreProfiles = false;
+    });
+    try {
+      final jwt = await account.createJWT();
+      _jwt = jwt.jwt;
+      await _fetchProfiles(page: page, reset: reset);
+    } on AppwriteException catch (e) {
+      debugPrint('AppwriteException: ${e.message}');
+      setState(() {
+        _hasError = true;
+        _isLoading = false;
+        _fetchingNextBatch = false;
+      });
+    } catch (e) {
+      debugPrint('Unexpected error: $e');
+      setState(() {
+        _hasError = true;
+        _isLoading = false;
+        _fetchingNextBatch = false;
+      });
+    }
+  }
+
+  Future<void> _initAndFetchProfiles() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _noMoreProfiles = false;
+    });
+
+    // Try to load from local storage first
+    final localLoaded = await _loadProfilesFromLocal();
+    if (localLoaded) {
+      setState(() {
+        _isLoading = false;
+      });
+      // Fetch distance for the first profile after profiles are loaded
+      _fetchAndSetDistance();
+      // Preload next batch in background
+      _preloadNextProfiles();
+      // Also update the cache in the background with latest data
+      _updateCacheInBackground(page: _currentPage);
+      return;
+    }
+
+    // If not found locally, fetch from server robustly
+    await _robustFetchProfiles(page: 0, reset: true);
+    // Fetch distance for the first profile after profiles are loaded
+    _fetchAndSetDistance();
+    // Preload next batch in background
+    _preloadNextProfiles();
+  }
+
+  Future<bool> _loadProfilesFromLocal() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final profilesJson = prefs.getString(_localProfilesKey);
+      final page = prefs.getInt(_localPageKey) ?? 0;
+      if (profilesJson != null) {
+        final List<dynamic> decoded = json.decode(profilesJson);
+        final List<Map<String, dynamic>> loadedProfiles = decoded
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+        if (loadedProfiles.isNotEmpty) {
+          // No longer filter out profiles with existing connections
+          setState(() {
+            _profiles = loadedProfiles;
+            _currentProfileIndex = 0;
+            _currentPage = page;
+          });
+          return true;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading profiles from local: $e');
+    }
+    return false;
+  }
+
+  /// Filter out profiles that have existing connections with the current user
+  Future<List<Map<String, dynamic>>> _filterProfilesWithExistingConnections(
+    List<Map<String, dynamic>> profiles,
+  ) async {
+    try {
+      // Get current user id
+      final user = await account.get();
+      final String currentUserId = user.$id;
+
+      // Get all connections where current user is either sender or receiver
+      final connectionsResult = await databases.listDocuments(
+        databaseId: databaseId,
+        collectionId: connectionsCollectionId,
+        queries: [
+          Query.or([
+            Query.equal('senderId', currentUserId),
+            Query.equal('receiverId', currentUserId),
+          ]),
+        ],
+      );
+
+      // Extract all connected user IDs
+      final Set<String> connectedUserIds = {};
+      for (final doc in connectionsResult.documents) {
+        final senderId = doc.data['senderId']?.toString();
+        final receiverId = doc.data['receiverId']?.toString();
+
+        // Add the other user's ID (not the current user's)
+        if (senderId == currentUserId && receiverId != null) {
+          connectedUserIds.add(receiverId);
+        } else if (receiverId == currentUserId && senderId != null) {
+          connectedUserIds.add(senderId);
+        }
+      }
+
+      // Filter out profiles that have connections
+      final filteredProfiles = profiles.where((profile) {
+        final profileUserId = profile['userId']?.toString();
+        return profileUserId != null &&
+            !connectedUserIds.contains(profileUserId);
+      }).toList();
+
+      debugPrint(
+        'Filtered ${profiles.length - filteredProfiles.length} profiles with existing connections',
+      );
+      return filteredProfiles;
+    } catch (e) {
+      debugPrint('Error filtering profiles with connections: $e');
+      // If there's an error, return the original profiles to avoid blocking the UI
+      return profiles;
+    }
+  }
+
+  Future<void> _saveProfilesToLocal(
+    List<Map<String, dynamic>> profiles,
+    int page,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_localProfilesKey, json.encode(profiles));
+      await prefs.setInt(_localPageKey, page);
+    } catch (e) {
+      debugPrint('Error saving profiles to local: $e');
+    }
+  }
+
+  // New: Update the cache in the background with latest data for the current page
+  Future<void> _updateCacheInBackground({int page = 0}) async {
+    try {
+      // Ensure JWT is available
+      if (_jwt == null) {
+        final jwt = await account.createJWT();
+        _jwt = jwt.jwt;
+      }
+      final response = await http.get(
+        Uri.parse(
+          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/profiles/random-simple',
+        ),
+        headers: {
+          'Authorization': 'Bearer $_jwt',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        List<dynamic> profilesList = [];
+        if (data is List && data.isNotEmpty) {
+          profilesList = data;
+        } else if (data is Map<String, dynamic> &&
+            data.containsKey('profiles')) {
+          profilesList = data['profiles'] ?? [];
+        }
+
+        final bool emptyProfiles = profilesList.isEmpty;
+
+        if (!emptyProfiles) {
+          final List<Map<String, dynamic>> newProfiles =
+              List<Map<String, dynamic>>.from(
+                profilesList.map((e) => Map<String, dynamic>.from(e)),
+              );
+
+          // No longer filter out profiles with existing connections before caching
+          // Save to local storage
+          await _saveProfilesToLocal(newProfiles, page);
+          // If user is still on this page, update UI with new data
+          if (mounted && page == _currentPage) {
+            setState(() {
+              _profiles = newProfiles;
+              _currentProfileIndex = 0;
+            });
+          }
+        } else {
+          // Server returned empty profiles, but don't update UI state here
+          // since this is background cache update
+          debugPrint('Server returned empty profiles in background update');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error updating cache in background: $e');
+    }
+  }
+
+  // No longer remove profile from local on skip
+  Future<void> _removeProfileFromLocal(int index) async {
+    // No-op for skip/undo logic
+  }
+
+  Future<void> _fetchProfiles({required int page, bool reset = false}) async {
+    // Always fetch new profiles if reset is true or local stack is empty
+    if (!reset && _profiles.isNotEmpty) {
+      setState(() {
+        _isLoading = false;
+        _fetchingNextBatch = false;
+      });
+      // Fetch distance for the first profile after profiles are loaded
+      _fetchAndSetDistance();
+      // Also update the cache in the background with latest data
+      _updateCacheInBackground(page: page);
+      return;
+    }
+
+    if (_jwt == null) {
+      await _robustFetchProfiles(page: page, reset: reset);
+      return;
+    }
+    setState(() {
+      _fetchingNextBatch = true;
+      _hasError = false;
+      _noMoreProfiles = false;
+    });
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/profiles/random-simple',
+        ),
+        headers: {
+          'Authorization': 'Bearer $_jwt',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        List<dynamic> profilesList = [];
+        if (data is Map<String, dynamic> && data.containsKey('profiles')) {
+          profilesList = data['profiles'] ?? [];
+        }
+
+        final bool emptyProfiles = profilesList.isEmpty;
+
+        if (!emptyProfiles) {
+          // Server returned profiles, use them
+          setState(() {
+            _profiles = List<Map<String, dynamic>>.from(
+              profilesList.map((e) => Map<String, dynamic>.from(e)),
+            );
+            _currentProfileIndex = 0;
+            _currentPage = page;
+            _isLoading = false;
+            _noMoreProfiles = false;
+            _fetchingNextBatch = false;
+            _hasError = false;
+          });
+          // Save to local storage as soon as you fetch
+          _saveProfilesToLocal(_profiles, _currentPage);
+        } else {
+          // Server returned empty profiles, check if we have cached profiles
+          final cachedProfiles = await _loadProfilesFromLocal();
+          if (cachedProfiles) {
+            // We have cached profiles, use them
+            setState(() {
+              _isLoading = false;
+              _noMoreProfiles = false;
+              _fetchingNextBatch = false;
+              _hasError = false;
+            });
+          } else {
+            // No cached profiles either, show no more profiles
+            setState(() {
+              _noMoreProfiles = true;
+              _isLoading = false;
+              _profiles = [];
+              _fetchingNextBatch = false;
+              _hasError = false;
+            });
+          }
+        }
+
+        // Fetch distance for the first profile after profiles are loaded
+        _fetchAndSetDistance();
+        // Also update the cache in the background with latest data
+        _updateCacheInBackground(page: page);
+      } else {
+        debugPrint('Failed to fetch profiles: ${response.body}');
+        setState(() {
+          _hasError = true;
+          _isLoading = false;
+          _fetchingNextBatch = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching profiles: $e');
+      setState(() {
+        _hasError = true;
+        _isLoading = false;
+        _fetchingNextBatch = false;
+      });
+    }
+  }
+
+  /// Preload the next batch of profiles in the background
+  Future<void> _preloadNextProfiles() async {
+    if (_preloading || _preloadedProfiles.isNotEmpty) return;
+    _preloading = true;
+    try {
+      // Ensure JWT is available
+      if (_jwt == null) {
+        final jwt = await account.createJWT();
+        _jwt = jwt.jwt;
+      }
+      final response = await http.get(
+        Uri.parse(
+          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/profiles/random-simple',
+        ),
+        headers: {
+          'Authorization': 'Bearer $_jwt',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        List<dynamic> profilesList = [];
+        if (data is List && data.isNotEmpty) {
+          profilesList = data;
+        } else if (data is Map<String, dynamic> &&
+            data.containsKey('profiles')) {
+          profilesList = data['profiles'] ?? [];
+        }
+        final bool emptyProfiles = profilesList.isEmpty;
+        if (!emptyProfiles) {
+          _preloadedProfiles = List<Map<String, dynamic>>.from(
+            profilesList.map((e) => Map<String, dynamic>.from(e)),
+          );
+        } else {
+          // Server returned empty profiles for preloading, but don't update UI state
+          // since this is just preloading and current profiles should still be available
+          debugPrint('Server returned empty profiles for preloading');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error preloading profiles: $e');
+    }
+    _preloading = false;
+  }
+
+  // Instead of removing, just move to next profile and keep history for undo
+  Future<void> _onSwipeLeftOrRight({bool removeWithAnimation = true}) async {
+    if (_profiles.isEmpty) return;
+
+    setState(() {
+      // Save current index to history for undo
+      _profileHistory.add(_currentProfileIndex);
+      // Move to next profile
+      if (_currentProfileIndex < _profiles.length - 1) {
+        _currentProfileIndex++;
+      } else {
+        // If at end, try to load more or show no more profiles
+        if (_preloadedProfiles.isNotEmpty) {
+          _profiles = List<Map<String, dynamic>>.from(_preloadedProfiles);
+          _preloadedProfiles.clear();
+          _currentProfileIndex = 0;
+          _isLoading = false;
+          _noMoreProfiles = false;
+          // Also update the cache in the background for the new page
+          _updateCacheInBackground(page: _currentPage + 1);
+        } else if (_noMoreProfiles && _profiles.isNotEmpty) {
+          // Loop infinitely through local stack
+          _currentProfileIndex = 0;
+        } else {
+          // If no preloaded profiles, fetch new ones from server
+          _isLoading = true;
+          _fetchProfiles(page: _currentPage + 1, reset: true).then((_) {
+            _preloadNextProfiles();
+          });
+        }
+      }
+    });
+
+    // If after moving, we are at the end of the stack (no more profiles), fetch new ones
+    if (_currentProfileIndex >= _profiles.length) {
+      setState(() {
+        _isLoading = true;
+      });
+      await _fetchProfiles(page: _currentPage + 1, reset: true);
+      await _preloadNextProfiles();
+      return;
+    }
+
+    // Preload if near end
+    if (_profiles.length - _currentProfileIndex <= 2 &&
+        !_preloading &&
+        _preloadedProfiles.isEmpty) {
+      _preloadNextProfiles();
+    }
+    // Update distance after profile index changes
+    _fetchAndSetDistance();
+  }
+
+  // Undo last skip
+  void _undoLastSkip() {
+    if (_profileHistory.isNotEmpty) {
+      setState(() {
+        _currentProfileIndex = _profileHistory.removeLast();
+      });
+      _fetchAndSetDistance();
+    }
+  }
+
+  Future<void> _sendInvite() async {
+    if (_profiles.isEmpty || _sendingInvite) return;
+
+    setState(() {
+      _sendingInvite = true;
+    });
+
+    final profile = _profiles[_currentProfileIndex];
+    final String? receiverUserId = profile['userId']?.toString();
+
+    if (receiverUserId == null || receiverUserId.isEmpty) {
+      setState(() {
+        _sendingInvite = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not send invite: userId missing.',
+            style: TextStyle(fontFamily: 'Poppins'),
+          ),
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Ensure JWT is available
+      if (_jwt == null) {
+        final jwt = await account.createJWT();
+        _jwt = jwt.jwt;
+      }
+
+      final response = await http.post(
+        Uri.parse(
+          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/notification/invitations/send',
+        ),
+        headers: {
+          'Authorization': 'Bearer $_jwt',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'receiverUserId': receiverUserId}),
+      );
+
+      if (response.statusCode == 200) {
+        // Success - Remove profile from cache and current list
+        await _removeProfileFromCache(receiverUserId);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Invitation sent!',
+              style: TextStyle(fontFamily: 'Poppins'),
+            ),
+          ),
+        );
+
+        // Scroll to top after successful invitation
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        }
+
+        // After sending, move to next profile (do not remove from list)
+        setState(() {
+          _profileHistory.add(_currentProfileIndex);
+          if (_currentProfileIndex < _profiles.length - 1) {
+            _currentProfileIndex++;
+          } else {
+            if (_preloadedProfiles.isNotEmpty) {
+              _profiles = List<Map<String, dynamic>>.from(_preloadedProfiles);
+              _preloadedProfiles.clear();
+              _currentProfileIndex = 0;
+              _isLoading = false;
+              _noMoreProfiles = false;
+              // Also update the cache in the background for the new page
+              _updateCacheInBackground(page: _currentPage + 1);
+            } else {
+              _isLoading = true;
+              _fetchProfiles(page: _currentPage + 1, reset: true).then((_) {
+                _preloadNextProfiles();
+              });
+            }
+          }
+        });
+
+        // If after moving, we are at the end of the stack (no more profiles), fetch new ones
+        if (_currentProfileIndex >= _profiles.length) {
+          setState(() {
+            _isLoading = true;
+          });
+          await _fetchProfiles(page: _currentPage + 1, reset: true);
+          await _preloadNextProfiles();
+          return;
+        }
+
+        // Preload if near end
+        if (_profiles.length - _currentProfileIndex <= 2 &&
+            !_preloading &&
+            _preloadedProfiles.isEmpty) {
+          _preloadNextProfiles();
+        }
+      } else {
+        // Error from server
+        String errorMsg = 'Failed to send invite.';
+        try {
+          final data = json.decode(response.body);
+          if (data is Map && data['error'] != null) {
+            errorMsg = data['error'].toString();
+          }
+        } catch (_) {}
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              errorMsg,
+              style: const TextStyle(fontFamily: 'Poppins'),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error sending invite: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error sending invite: $e',
+            style: const TextStyle(fontFamily: 'Poppins'),
+          ),
+        ),
+      );
+    } finally {
+      setState(() {
+        _sendingInvite = false;
+      });
+    }
+  }
+
+  /// Remove profile from cache by userId
+  Future<void> _removeProfileFromCache(String userId) async {
+    try {
+      // Remove from current profiles list
+      setState(() {
+        _profiles.removeWhere(
+          (profile) => profile['userId']?.toString() == userId,
+        );
+      });
+
+      // Remove from preloaded profiles
+      _preloadedProfiles.removeWhere(
+        (profile) => profile['userId']?.toString() == userId,
+      );
+
+      // Update local storage cache
+      final prefs = await SharedPreferences.getInstance();
+      final profilesJson = prefs.getString(_localProfilesKey);
+      if (profilesJson != null) {
+        final List<dynamic> decoded = json.decode(profilesJson);
+        final List<Map<String, dynamic>> cachedProfiles = decoded
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+
+        // Remove the profile from cached list
+        cachedProfiles.removeWhere(
+          (profile) => profile['userId']?.toString() == userId,
+        );
+
+        // Save updated cache back to local storage
+        await prefs.setString(_localProfilesKey, json.encode(cachedProfiles));
+      }
+    } catch (e) {
+      debugPrint('Error removing profile from cache: $e');
+    }
+  }
+
+  /// Helper to calculate age from dob string (format: 2005-10-17T00:00:00.000+00:00)
+  int? _calculateAgeFromDob(String? dobString) {
+    if (dobString == null || dobString.isEmpty) return null;
+    try {
+      final dob = DateTime.parse(dobString);
+      final now = DateTime.now();
+      int age = now.year - dob.year;
+      if (now.month < dob.month ||
+          (now.month == dob.month && now.day < dob.day)) {
+        age--;
+      }
+      return age;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Helper to get icon for profession type
+  IconData _getProfessionIcon(String? professionType) {
+    switch (professionType?.toLowerCase()) {
+      case 'student':
+        return Icons.school;
+      case 'engineer':
+        return Icons.engineering;
+      case 'designer':
+        return Icons.brush;
+      case 'doctor':
+        return Icons.local_hospital;
+      case 'artist':
+        return Icons.palette;
+      case 'other':
+        return Icons.work_outline;
+      default:
+        return Icons.work_outline;
+    }
+  }
+
+  Future<void> _fetchAndSetDistance() async {
+    if (_profiles.isEmpty || _currentProfileIndex >= _profiles.length) return;
+    setState(() {
+      _distanceLoading = true;
+      _distanceError = null;
+    });
+    try {
+      // Get current user id
+      final user = await account.get();
+      final String currentUserId = user.$id;
+      // Fetch current user's location from Appwrite
+      final locationDocs = await databases.listDocuments(
+        databaseId: databaseId,
+        collectionId: locationCollectionId,
+        queries: [Query.equal('user', currentUserId)],
+      );
+      if (locationDocs.documents.isEmpty) {
+        setState(() {
+          _distanceError = 'Your location is not set.';
+          _distanceLoading = false;
+        });
+        return;
+      }
+      final myLoc = locationDocs.documents.first.data;
+      final double? myLat = (myLoc['latitude'] is num)
+          ? (myLoc['latitude'] as num).toDouble()
+          : double.tryParse(myLoc['latitude']?.toString() ?? '');
+      final double? myLng = (myLoc['longitude'] is num)
+          ? (myLoc['longitude'] as num).toDouble()
+          : double.tryParse(myLoc['longitude']?.toString() ?? '');
+      if (myLat == null || myLng == null) {
+        setState(() {
+          _distanceError = 'Your location is invalid.';
+          _distanceLoading = false;
+        });
+        return;
+      }
+      // Get profile's location
+      final profile = _profiles[_currentProfileIndex];
+
+      final location = profile['location'] is Map<String, dynamic>
+          ? profile['location']
+          : <String, dynamic>{};
+      final double? profLat = (location['latitude'] is num)
+          ? (location['latitude'] as num).toDouble()
+          : double.tryParse(location['latitude']?.toString() ?? '');
+      final double? profLng = (location['longitude'] is num)
+          ? (location['longitude'] as num).toDouble()
+          : double.tryParse(location['longitude']?.toString() ?? '');
+      if (profLat == null || profLng == null) {
+        setState(() {
+          _distanceError = 'Profile location is invalid.';
+          _distanceLoading = false;
+        });
+        return;
+      }
+      // Calculate distance
+      final double dist = _calculateDistanceKm(myLat, myLng, profLat, profLng);
+      setState(() {
+        _distanceKm = dist;
+        _distanceLoading = false;
+        _distanceError = null;
+      });
+    } catch (e) {
+      setState(() {
+        _distanceError = 'Failed to get distance.';
+        _distanceLoading = false;
+      });
+    }
+  }
+
+  double _calculateDistanceKm(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    const double R = 6371; // Earth radius in km
+    final double dLat = _deg2rad(lat2 - lat1);
+    final double dLon = _deg2rad(lon2 - lon1);
+    final double a =
+        (sin(dLat / 2) * sin(dLat / 2)) +
+        cos(_deg2rad(lat1)) *
+            cos(_deg2rad(lat2)) *
+            (sin(dLon / 2) * sin(dLon / 2));
+    final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
+  }
+
+  double _deg2rad(double deg) => deg * (pi / 180);
+
+  // Add update checking methods
+  Future<void> _checkForUpdates() async {
+    try {
+      // Get current app version
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
+
+      // Fetch update info from Appwrite
+      final documents = await databases.listDocuments(
+        databaseId: databaseId,
+        collectionId: updateNowCollectionId,
+        queries: [Query.limit(1)],
+      );
+
+      final updateData = documents.documents.first.data;
+      final latestVersion = updateData['latest_version']?.toString();
+      final updateLink = updateData['updateLink']?.toString();
+      final forceUpdate = updateData['force_update'] == true;
+
+      if (latestVersion == null || updateLink == null) {
+        return;
+      }
+
+      // Compare versions
+      if (_compareVersions(currentVersion, latestVersion) < 0) {
+        if (mounted) {
+          _showUpdateDialog(
+            currentVersion,
+            latestVersion,
+            updateLink,
+            forceUpdate,
+          );
+        }
+      }
+    } catch (e) {
+      print('Error checking for updates: $e');
+    }
+  }
+
+  int _compareVersions(String version1, String version2) {
+    final v1Parts = version1.split('.').map(int.parse).toList();
+    final v2Parts = version2.split('.').map(int.parse).toList();
+
+    // Pad with zeros if needed
+    while (v1Parts.length < v2Parts.length) v1Parts.add(0);
+    while (v2Parts.length < v1Parts.length) v2Parts.add(0);
+
+    for (int i = 0; i < v1Parts.length; i++) {
+      if (v1Parts[i] < v2Parts[i]) return -1;
+      if (v1Parts[i] > v2Parts[i]) return 1;
+    }
+    return 0;
+  }
+
+  void _showUpdateDialog(
+    String currentVersion,
+    String latestVersion,
+    String updateLink,
+    bool forceUpdate,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: !forceUpdate,
+      builder: (context) => WillPopScope(
+        onWillPop: () async => !forceUpdate,
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Update icon
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B4DFF).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    PhosphorIconsBold.arrowUp,
+                    color: Color(0xFF8B4DFF),
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Title
+                Text(
+                  forceUpdate ? 'Update Required' : 'Update Available',
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                    color: Color(0xFF3B2357),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+
+                // Subtitle
+                Text(
+                  'A new version is available',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    color: const Color(0xFF6D4B86).withOpacity(0.8),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+
+                // Version info
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F6FA),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF8B4DFF).withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Current',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                              color: const Color(0xFF6D4B86).withOpacity(0.7),
+                            ),
+                          ),
+                          Text(
+                            currentVersion,
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Color(0xFF3B2357),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8B4DFF).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(
+                          PhosphorIconsRegular.arrowRight,
+                          color: Color(0xFF8B4DFF),
+                          size: 16,
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Latest',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                              color: const Color(0xFF6D4B86).withOpacity(0.7),
+                            ),
+                          ),
+                          Text(
+                            latestVersion,
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Color(0xFF3B2357),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Update button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        final uri = Uri.parse(updateLink);
+                        final success = await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        );
+                        if (success && !forceUpdate) {
+                          Navigator.of(context).pop();
+                        }
+                      } catch (e) {
+                        print('Error launching update link: $e');
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8B4DFF),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(PhosphorIconsBold.download, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Update Now',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Dismiss button (only for non-force updates)
+                if (!forceUpdate) ...[
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text(
+                      'Remind me later',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                        color: const Color(0xFF6D4B86).withOpacity(0.7),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper method to build a single card
+  Widget _buildProfileCard(Map<String, dynamic> profile, int index, {
+    double? dragOffset,
+    double? rotation,
+    bool isTopCard = false,
+  }) {
+    final biodata = profile['biodata'] is Map<String, dynamic>
+        ? profile['biodata']
+        : <String, dynamic>{};
+    final location = profile['location'] is Map<String, dynamic>
+        ? profile['location']
+        : <String, dynamic>{};
+    final user = biodata['user'] is Map<String, dynamic>
+        ? biodata['user']
+        : <String, dynamic>{};
+    final String name = user['name']?.toString() ?? 'Unknown';
+    final String? gender = biodata['gender']?.toString();
+    final String? bio = biodata['bio']?.toString();
+    final String? image =
+        (profile['images'] != null && profile['images'].isNotEmpty)
+        ? profile['images'][0].toString()
+        : null;
+    final List<String> additionalImages = (profile['images'] != null)
+        ? List<String>.from(profile['images'].skip(1).map((e) => e.toString()))
+        : [];
+    final String? city = location['city']?.toString();
+    final String? state = location['state']?.toString();
+    final String? country = location['country']?.toString();
+
+    // Get age from dob
+    final String? dobString = biodata['dob']?.toString();
+    final int? age = _calculateAgeFromDob(dobString);
+
+    // Get profession info
+    final String? professionType = biodata['profession_name']?.toString();
+    final String? professionSubtype = biodata['sub_type']?.toString();
+
+    return Container(
+      margin: EdgeInsets.only(
+        bottom: 24,
+        left: index * _cardSpacing,
+        right: index * _cardSpacing,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Image with bottom gradient overlay
+          ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: SizedBox(
+              width: double.infinity,
+              height: MediaQuery.of(context).size.height * 0.8,
+              child: Stack(
+                children: [
+                  image != null && image.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: image,
+                          width: double.infinity,
+                          height: MediaQuery.of(context).size.height * 0.8,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            width: double.infinity,
+                            height: 420,
+                            color: Colors.grey[300],
+                            child: const Icon(
+                              Icons.person,
+                              size: 80,
+                              color: Colors.white,
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            width: double.infinity,
+                            height: 420,
+                            color: Colors.grey[300],
+                            child: const Icon(
+                              Icons.person,
+                              size: 80,
+                              color: Colors.white,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          width: double.infinity,
+                          height: 420,
+                          color: Colors.grey[300],
+                          child: const Icon(
+                            Icons.person,
+                            size: 80,
+                            color: Colors.white,
+                          ),
+                        ),
+                  // Gradient overlay at the bottom
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.transparent,
+                              Color.fromARGB(120, 0, 0, 0),
+                              Color.fromARGB(180, 0, 0, 0),
+                            ],
+                            stops: [0.0, 0.6, 0.85, 1.0],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Name, age, profession and invite button at bottom left
+          Positioned(
+            left: 16,
+            bottom: 32,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$name, ${age != null ? age : "--"}',
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black38,
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+                if (professionType != null && professionType.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _getProfessionIcon(professionType),
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        professionType[0].toUpperCase() +
+                            professionType.substring(1),
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w500,
+                          fontSize: 16,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black38,
+                              blurRadius: 4,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (professionSubtype != null &&
+                          professionSubtype.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        Text(
+                          '• ${professionSubtype}',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w400,
+                            fontSize: 14,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black38,
+                                blurRadius: 4,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+                if (isTopCard) ...[
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: _sendingInvite ? null : _sendInvite,
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8B4DFF),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.12),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: _sendingInvite
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(
+                                PhosphorIconsBold.userPlus,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          // Loading indicator for next batch
+          if (_fetchingNextBatch && isTopCard)
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Build the card stack
+  Widget _buildCardStack() {
+    if (_profiles.isEmpty) return const SizedBox.shrink();
+
+    final List<Widget> cards = [];
+    final int startIndex = _currentProfileIndex;
+    final int endIndex = startIndex + _maxVisibleCards;
+    
+    // Build cards in reverse order so the current card is on top
+    for (int i = _maxVisibleCards - 1; i >= 0; i--) {
+      final int profileIndex = startIndex + i;
+      if (profileIndex >= _profiles.length) continue;
+      
+      final profile = _profiles[profileIndex];
+      final bool isTopCard = i == 0;
+      
+      // Calculate transform for each card
+      double scale = 1.0;
+      double translateY = 0.0;
+      
+      if (i > 0) {
+        scale = _cardScale - (i * 0.05);
+        translateY = i * 4.0;
+      }
+      
+      // Apply drag transform only to top card
+      double dragOffset = 0.0;
+      double rotation = 0.0;
+      
+      if (isTopCard) {
+        dragOffset = _dragDx;
+        rotation = (_dragDx / MediaQuery.of(context).size.width) * 0.21;
+      }
+      
+      cards.add(
+        Positioned.fill(
+          child: Transform.translate(
+            offset: Offset(
+              dragOffset,
+              translateY,
+            ),
+            child: Transform.scale(
+              scale: scale,
+              child: Transform.rotate(
+                angle: rotation,
+                child: _buildProfileCard(
+                  profile,
+                  i,
+                  dragOffset: dragOffset,
+                  rotation: rotation,
+                  isTopCard: isTopCard,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.8 + 24,
+      child: Stack(
+        children: cards,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_hasError) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                "Failed to load profiles.",
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  color: Color(0xFF3B2357),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  await _robustFetchProfiles(page: 0, reset: true);
+                  _preloadNextProfiles();
+                },
+                child: const Text(
+                  "Retry",
+                  style: TextStyle(fontFamily: 'Poppins'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Only show "no more profiles" when we've confirmed no profiles from both local and server
+    if (_noMoreProfiles && _profiles.isEmpty && !_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            titleSpacing: 16,
+            title: const Text(
+              'Lushh',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w700,
+                fontSize: 22,
+                color: Color(0xFF2D1B3A),
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(
+                  PhosphorIconsRegular.gearSix,
+                  color: Color(0xFF6D4B86),
+                  size: 22,
+                ),
+                onPressed: () {
+                  Navigator.pushNamed(context, '/settings');
+                },
+                splashRadius: 22,
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                "No more profiles found.",
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  color: Color(0xFF3B2357),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 32.0),
+                child: Text(
+                  "Try expanding your min/max age or max distance in settings.",
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 15,
+                    color: Color(0xFF6D4B86),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Defensive: If index is out of range, loop back to start if we have profiles
+    if (_currentProfileIndex >= _profiles.length) {
+      if (_noMoreProfiles && _profiles.isNotEmpty) {
+        // Loop infinitely through local stack
+        setState(() {
+          _currentProfileIndex = 0;
+        });
+      } else {
+        // This should not happen, but if it does, fetch new profiles
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          setState(() {
+            _isLoading = true;
+          });
+          await _fetchProfiles(page: _currentPage + 1, reset: true);
+          await _preloadNextProfiles();
+        });
+        return const Scaffold(
+          backgroundColor: Colors.white,
+          body: Center(child: CircularProgressIndicator()),
+        );
+      }
+    }
+
+    final profile = _profiles[_currentProfileIndex];
+    final biodata = profile['biodata'] is Map<String, dynamic>
+        ? profile['biodata']
+        : <String, dynamic>{};
+    final location = profile['location'] is Map<String, dynamic>
+        ? profile['location']
+        : <String, dynamic>{};
+    final hobbies = profile['hobbies'] is List
+        ? profile['hobbies'] as List
+        : <dynamic>[];
+    final user = biodata['user'] is Map<String, dynamic>
+        ? biodata['user']
+        : <String, dynamic>{};
+    final String name = user['name']?.toString() ?? 'Unknown';
+    final String? gender = biodata['gender']?.toString();
+    final String? bio = biodata['bio']?.toString();
+    final List<String> additionalImages = (profile['images'] != null)
+        ? List<String>.from(profile['images'].skip(1).map((e) => e.toString()))
+        : [];
+    final String? city = location['city']?.toString();
+    final String? state = location['state']?.toString();
+    final String? country = location['country']?.toString();
+
+    // Get age from dob
+    final String? dobString = biodata['dob']?.toString();
+    final int? age = _calculateAgeFromDob(dobString);
+
+    // Get profession info
+    final String? professionType = biodata['profession_name']?.toString();
+    final String? professionSubtype = biodata['sub_type']?.toString();
+
+    // Get height in cm from biodata
+    final dynamic heightValue = biodata['height'];
+    String? heightDisplay;
+    if (heightValue != null) {
+      if (heightValue is num) {
+        heightDisplay = "${heightValue.toString()} cm";
+      } else if (heightValue is String && heightValue.trim().isNotEmpty) {
+        heightDisplay = "${heightValue.trim()} cm";
+      }
+    }
+
+    // Get prompts data
+    final List<dynamic> promptsRaw = profile['prompts'] is List
+        ? profile['prompts'] as List
+        : [];
+    List<Map<String, dynamic>> promptAnswers = [];
+
+    if (promptsRaw.isNotEmpty && gender != null) {
+      final questions = gender.toLowerCase() == 'male'
+          ? _maleQuestions
+          : _femaleQuestions;
+
+      for (int i = 0; i < 7 && i < promptsRaw.length; i++) {
+        final answer = promptsRaw[i];
+        if (answer != null &&
+            answer.toString().isNotEmpty &&
+            answer.toString() != 'null') {
+          promptAnswers.add({
+            'question': questions[i]['question'],
+            'answer': answer.toString(),
+          });
+        }
+      }
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(56),
+        child: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          titleSpacing: 16,
+          title: const Text(
+            'Lushh',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w700,
+              fontSize: 22,
+              color: Color(0xFF2D1B3A),
+            ),
+          ),
+          actions: [
+            if (_profileHistory.isNotEmpty)
+              IconButton(
+                icon: const Icon(
+                  PhosphorIconsRegular.arrowUUpLeft,
+                  color: Colors.black,
+                  size: 28,
+                ),
+                onPressed: _undoLastSkip,
+                splashRadius: 22,
+                tooltip: "Back",
+              ),
+            IconButton(
+              icon: const Icon(
+                PhosphorIconsRegular.gearSix,
+                color: Color(0xFF6D4B86),
+                size: 22,
+              ),
+              onPressed: () {
+                Navigator.pushNamed(context, '/settings');
+              },
+              splashRadius: 22,
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+      ),
+      body: SingleChildScrollView(
+        controller: _scrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: DefaultTextStyle(
+          style: const TextStyle(fontFamily: 'Poppins'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Card Stack with swipe functionality
+              GestureDetector(
+                onHorizontalDragStart: (details) {
+                  if (_isSwiping) return;
+                  setState(() {
+                    _dragDx = 0.0;
+                  });
+                },
+                onHorizontalDragUpdate: (details) {
+                  if (_isSwiping) return;
+                  setState(() {
+                    _dragDx += details.delta.dx;
+                  });
+                },
+                onHorizontalDragEnd: (details) {
+                  if (_isSwiping) return;
+                  final velocity = details.primaryVelocity ?? 0.0;
+                  // Only consider a swipe if the velocity or drag distance is significant
+                  if (velocity.abs() > 200 || _dragDx.abs() > 80) {
+                    setState(() {
+                      _isSwiping = true;
+                    });
+                    // Animate off screen in the swipe direction
+                    final isLeft = (_dragDx < 0) || (velocity < 0);
+
+                    // For a tilted swipe, we animate both translation and rotation.
+                    // We'll rotate a bit (e.g. 12 degrees) in the direction of the swipe.
+                    final double endRotation = isLeft
+                        ? -0.21
+                        : 0.21; // ~12 degrees in radians
+
+                    _swipeAnimation =
+                        Tween<Offset>(
+                          begin: Offset(
+                            _dragDx / MediaQuery.of(context).size.width,
+                            0,
+                          ),
+                          end: Offset(
+                            isLeft ? -2.0 : 2.0,
+                            0.4,
+                          ), // add a bit of vertical movement
+                        ).animate(
+                          CurvedAnimation(
+                            parent: _swipeController,
+                            curve: Curves.easeOut,
+                          ),
+                        );
+                    _swipeRotationAnimation =
+                        Tween<double>(
+                          begin:
+                              (_dragDx / MediaQuery.of(context).size.width) *
+                              0.21,
+                          end: endRotation,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: _swipeController,
+                            curve: Curves.easeOut,
+                          ),
+                        );
+                    _swipeController.forward();
+                  } else {
+                    // Animate back to center
+                    _swipeAnimation =
+                        Tween<Offset>(
+                          begin: Offset(
+                            _dragDx / MediaQuery.of(context).size.width,
+                            0,
+                          ),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: _swipeController,
+                            curve: Curves.easeOut,
+                          ),
+                        );
+                    _swipeRotationAnimation =
+                        Tween<double>(
+                          begin:
+                              (_dragDx / MediaQuery.of(context).size.width) *
+                              0.21,
+                          end: 0.0,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: _swipeController,
+                            curve: Curves.easeOut,
+                          ),
+                        );
+                    _swipeController.forward().then((_) {
+                      setState(() {
+                        _dragDx = 0.0;
+                        _isSwiping = false;
+                      });
+                    });
+                  }
+                },
+                child: _buildCardStack(),
+              ),
+              // Bio Section
+              const Align(
+                alignment: Alignment.center,
+                child: Text(
+                  "Bio",
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    color: Color(0xFF3B2357),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10.0),
+                child: Text(
+                  bio ?? "No bio provided.",
+                  textAlign: TextAlign.left,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 21,
+                    color: Color(0xFF3B2357),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 22),
+              // About me Section
+              const Text(
+                "About me",
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  color: Color(0xFF3B2357),
+                ),
+              ),
+              const SizedBox(height: 10),
+              hobbies.isNotEmpty
+                  ? Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: hobbies.map<Widget>((hobby) {
+                        final String hobbyName =
+                            hobby is Map && hobby['hobby_name'] != null
+                            ? hobby['hobby_name'].toString()
+                            : '';
+                        final String hobbyCategory =
+                            hobby is Map && hobby['hobby_category'] != null
+                            ? hobby['hobby_category'].toString()
+                            : '';
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8F6FA),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            hobbyName.isNotEmpty
+                                ? hobbyName[0].toUpperCase() +
+                                      hobbyName.substring(1)
+                                : hobbyCategory,
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                              color: Color(0xFF6D4B86),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    )
+                  : const Text(
+                      "No hobbies listed.",
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w400,
+                        fontSize: 13,
+                        color: Color(0xFF6D4B86),
+                      ),
+                    ),
+              // Height Section (below About me)
+              if (heightDisplay != null && heightDisplay.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    const Icon(
+                      PhosphorIconsRegular.ruler,
+                      color: Color(0xFF6D4B86),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      "Height: $heightDisplay",
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
+                        fontSize: 15,
+                        color: Color(0xFF3B2357),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 24),
+              // Location Section
+              if ((city != null && city.isNotEmpty) ||
+                  (state != null && state.isNotEmpty) ||
+                  (country != null && country.isNotEmpty))
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    if ((city != null && city.isNotEmpty) ||
+                        (state != null && state.isNotEmpty))
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.location_on,
+                              color: Color(0xFF6D4B86),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              "Lives in ${city ?? ''}${(city != null && city.isNotEmpty && state != null && state.isNotEmpty) ? ', ' : ''}${state ?? ''}",
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w500,
+                                fontSize: 12.5,
+                                color: Color(0xFF6D4B86),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (country != null && country.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.place,
+                              color: Color(0xFF6D4B86),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              "From $country",
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              softWrap: false,
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w500,
+                                fontSize: 12.5,
+                                color: Color(0xFF6D4B86),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              const SizedBox(height: 32),
+              // Additional Images Section
+              if (additionalImages.isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ...additionalImages.asMap().entries.expand((entry) {
+                      final idx = entry.key;
+                      final imgUrl = entry.value;
+                      final widgets = <Widget>[];
+                      if (imgUrl == null || imgUrl.toString().isEmpty) {
+                        widgets.add(const SizedBox.shrink());
+                      } else {
+                        widgets.add(
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 20),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(18),
+                              child: SizedBox(
+                                width: double.infinity,
+                                height:
+                                    MediaQuery.of(context).size.height * 0.8,
+                                child: CachedNetworkImage(
+                                  imageUrl: imgUrl.toString(),
+                                  width: double.infinity,
+                                  height:
+                                      MediaQuery.of(context).size.height * 0.8,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => Container(
+                                    width: double.infinity,
+                                    height:
+                                        MediaQuery.of(context).size.height *
+                                        0.8,
+                                    color: Colors.grey[300],
+                                    child: const Icon(
+                                      Icons.broken_image,
+                                      size: 80,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  errorWidget: (context, url, error) =>
+                                      Container(
+                                        width: double.infinity,
+                                        height:
+                                            MediaQuery.of(context).size.height *
+                                            0.8,
+                                        color: Colors.grey[300],
+                                        child: const Icon(
+                                          Icons.broken_image,
+                                          size: 80,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      // Insert prompts after the second image (index 1)
+                      if (idx == 1 && promptAnswers.isNotEmpty) {
+                        widgets.add(ExpandablePrompts(prompts: promptAnswers));
+                      }
+                      return widgets;
+                    }).toList(),
+                  ],
+                ),
+              // If there are less than 2 images, show prompts after the last image
+              if (additionalImages.length < 2 && promptAnswers.isNotEmpty)
+                ExpandablePrompts(prompts: promptAnswers),
+
+              // Distance Section
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0, bottom: 32.0),
+                child: Builder(
+                  builder: (context) {
+                    if (_distanceLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (_distanceError != null) {
+                      return Center(
+                        child: Text(
+                          _distanceError!,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w500,
+                            fontSize: 15,
+                            color: Color(0xFF6D4B86),
+                          ),
+                        ),
+                      );
+                    } else if (_distanceKm != null) {
+                      return Align(
+                        alignment: Alignment.bottomLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.location_on,
+                              color: Color(0xFF3B2357),
+                              size: 28,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Lives ${_distanceKm!.round()} km away',
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 24,
+                                color: Color(0xFF3B2357),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+
+              // Add Friend Button Section
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _sendingInvite ? null : _sendInvite,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B4DFF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 22),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(19),
+                    ),
+                    elevation: 0,
+                    shadowColor: const Color(0xFF8B4DFF).withOpacity(0.3),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_sendingInvite)
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      else
+                        const Icon(PhosphorIconsBold.userPlus, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        _sendingInvite ? 'Sending Match...' : 'Send Match',
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

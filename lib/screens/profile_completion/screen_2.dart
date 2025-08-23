@@ -3,36 +3,26 @@ import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:lushh/appwrite/appwrite.dart';
 import 'package:lushh/screens/profile_completion/screen_3.dart';
+import 'package:lushh/services/config_service.dart';
 
-// Import all variables using String.fromEnvironment
-const appwriteDevKey = String.fromEnvironment('APPWRITE_DEV_KEY');
-const appwriteEndpoint = String.fromEnvironment('APPWRITE_ENDPOINT');
-const projectId = String.fromEnvironment('PROJECT_ID');
-const databaseId = String.fromEnvironment('DATABASE_ID');
-const biodataCollectionId = String.fromEnvironment('BIODATA_COLLECTIONID');
-const blockedCollectionId = String.fromEnvironment('BLOCKED_COLLECTIONID');
-const completionStatusCollectionId = String.fromEnvironment(
-  'COMPLETION_STATUS_COLLECTIONID',
-);
-const connectionsCollectionId = String.fromEnvironment(
-  'CONNECTIONS_COLLECTIONID',
-);
-const hasShownCollectionId = String.fromEnvironment('HAS_SHOWN_COLLECTIONID');
-const hobbiesCollectionId = String.fromEnvironment('HOBBIES_COLLECTIONID');
-const imageCollectionId = String.fromEnvironment('IMAGE_COLLECTIONID');
-const locationCollectionId = String.fromEnvironment('LOCATION_COLLECTIONID');
-const messageInboxCollectionId = String.fromEnvironment(
-  'MESSAGE_INBOX_COLLECTIONID',
-);
-const messagesCollectionId = String.fromEnvironment('MESSAGES_COLLECTIONID');
-const notificationsCollectionId = String.fromEnvironment(
-  'NOTIFICATIONS_COLLECTIONID',
-);
-const preferenceCollectionId = String.fromEnvironment(
-  'PREFERENCE_COLLECTIONID',
-);
-const reportsCollectionId = String.fromEnvironment('REPORTS_COLLECTIONID');
-const usersCollectionId = String.fromEnvironment('USERS_COLLECTIONID');
+// Environment variables using ConfigService
+final appwriteEndpoint = ConfigService().get('APPWRITE_ENDPOINT');
+final projectId = ConfigService().get('PROJECT_ID');
+final databaseId = ConfigService().get('DATABASE_ID');
+final biodataCollectionId = ConfigService().get('BIODATA_COLLECTIONID');
+final blockedCollectionId = ConfigService().get('BLOCKED_COLLECTIONID');
+final completionStatusCollectionId = ConfigService().get('COMPLETION_STATUS_COLLECTIONID');
+final connectionsCollectionId = ConfigService().get('CONNECTIONS_COLLECTIONID');
+final hasShownCollectionId = ConfigService().get('HAS_SHOWN_COLLECTIONID');
+final hobbiesCollectionId = ConfigService().get('HOBBIES_COLLECTIONID');
+final imageCollectionId = ConfigService().get('IMAGE_COLLECTIONID');
+final locationCollectionId = ConfigService().get('LOCATION_COLLECTIONID');
+final messageInboxCollectionId = ConfigService().get('MESSAGE_INBOX_COLLECTIONID');
+final messagesCollectionId = ConfigService().get('MESSAGES_COLLECTIONID');
+final notificationsCollectionId = ConfigService().get('NOTIFICATIONS_COLLECTIONID');
+final preferenceCollectionId = ConfigService().get('PREFERENCE_COLLECTIONID');
+final reportsCollectionId = ConfigService().get('REPORTS_COLLECTIONID');
+final usersCollectionId = ConfigService().get('USERS_COLLECTIONID');
 
 class AddHeightScreen extends StatefulWidget {
   const AddHeightScreen({super.key});
@@ -42,243 +32,185 @@ class AddHeightScreen extends StatefulWidget {
 }
 
 class _AddHeightScreenState extends State<AddHeightScreen> {
+  static const Color accentColor = Color(0xFF6D4B86);
+
   int _selectedHeight = 170;
-  final FixedExtentScrollController _controller = FixedExtentScrollController(
-    initialItem: 40,
-  ); // 130 + 40 = 170
   bool _isLoading = false;
+  final FixedExtentScrollController _controller = FixedExtentScrollController(initialItem: 40);
 
   final List<int> heightList = List.generate(121, (i) => 130 + i); // 130–250 cm
 
   Future<void> _submit() async {
+    if (_isLoading) return; // prevent double-tap
     setState(() => _isLoading = true);
+
     try {
       final user = await account.get();
       final userId = user.$id;
 
-      final bioDataDocument = await databases.listDocuments(
+      final bioDataDocs = await databases.listDocuments(
         databaseId: databaseId,
         collectionId: biodataCollectionId,
-        queries: [
-          Query.equal('user', userId),
-          Query.select(['\$id']),
-        ],
+        queries: [Query.equal('user', userId), Query.select(['\$id'])],
       );
-
-      if (bioDataDocument.documents.isEmpty) {
-        throw Exception('Bio data document not found for user');
+      if (bioDataDocs.documents.isEmpty) {
+        throw Exception('Could not find your profile data.');
       }
 
-      String bioDataDocumentID = bioDataDocument.documents[0].$id;
-
+      final bioId = bioDataDocs.documents.first.$id;
       await databases.updateDocument(
         databaseId: databaseId,
         collectionId: biodataCollectionId,
-        documentId: bioDataDocumentID,
+        documentId: bioId,
         data: {'height': _selectedHeight},
       );
 
-      final userCompletionStatusDocument = await databases.listDocuments(
+      final completionDocs = await databases.listDocuments(
         databaseId: databaseId,
         collectionId: completionStatusCollectionId,
-        queries: [
-          Query.equal('user', userId),
-          Query.select(['\$id']),
-        ],
+        queries: [Query.equal('user', userId), Query.select(['\$id'])],
       );
-
-      if (userCompletionStatusDocument.documents.isNotEmpty) {
-        final documentId = userCompletionStatusDocument.documents[0].$id;
+      if (completionDocs.documents.isNotEmpty) {
         await databases.updateDocument(
           databaseId: databaseId,
           collectionId: completionStatusCollectionId,
-          documentId: documentId,
+          documentId: completionDocs.documents.first.$id,
           data: {'isHeightAdded': true},
         );
       }
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => AddGenderScreen()),
-      );
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => AddGenderScreen()),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.toString().replaceFirst('Exception: ', ''),
+              style: const TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.red.shade400,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = Colors.black;
-    final accentColor = const Color(0xFF6D4B86);
-
     return Scaffold(
-      backgroundColor: const Color(0xfff7f7f7),
+      backgroundColor: const Color(0xfffafafa),
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           "Your Height",
-          style: TextStyle(
-            color: themeColor,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black),
         ),
+        centerTitle: true,
         backgroundColor: Colors.white,
-        foregroundColor: themeColor,
         elevation: 0.5,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Add your height",
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: themeColor,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      "How tall are you? This helps us personalize your experience.",
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.black.withOpacity(0.7),
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
+              const Text(
+                "Add your height",
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 24),
-              // Card-like container
+              const SizedBox(height: 8),
+              const Text(
+                "How tall are you? This helps us personalize your experience.",
+                style: TextStyle(fontSize: 15, color: Colors.black54),
+              ),
+              const SizedBox(height: 28),
               Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18.0),
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
-                            blurRadius: 16,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 28,
+                    ],
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 22),
+                  child: Column(
+                    children: [
+                      const Text(
+                        "Select your height",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: accentColor),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          const SizedBox(height: 12),
-                          Text(
-                            "Select your height",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 18,
-                              color: accentColor,
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 180,
+                        child: CupertinoPicker(
+                          scrollController: _controller,
+                          itemExtent: 48,
+                          onSelectedItemChanged: (index) {
+                            setState(() => _selectedHeight = heightList[index]);
+                          },
+                          selectionOverlay: Container(
+                            decoration: BoxDecoration(
+                              border: Border(
+                                top: BorderSide(color: accentColor.withOpacity(0.25), width: 2),
+                                bottom: BorderSide(color: accentColor.withOpacity(0.25), width: 2),
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 18),
-                          SizedBox(
-                            height: 180,
-                            child: CupertinoPicker(
-                              scrollController: _controller,
-                              itemExtent: 48,
-                              onSelectedItemChanged: (index) {
-                                setState(
-                                  () => _selectedHeight = heightList[index],
-                                );
-                              },
-                              selectionOverlay: Container(
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    top: BorderSide(
-                                      color: accentColor.withOpacity(0.2),
-                                      width: 2,
-                                    ),
-                                    bottom: BorderSide(
-                                      color: accentColor.withOpacity(0.2),
-                                      width: 2,
-                                    ),
+                          children: heightList.map((h) {
+                            final isSelected = h == _selectedHeight;
+                            return AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 200),
+                              style: TextStyle(
+                                fontSize: 20,
+                                color: isSelected ? accentColor : Colors.black87,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              child: Text('$h cm'),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      const Spacer(),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: _submit,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: accentColor,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 2,
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                   ),
+                                )
+                              : const Text(
+                                  "Continue",
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
                                 ),
-                              ),
-                              children: heightList
-                                  .map(
-                                    (h) => Center(
-                                      child: Text(
-                                        '$h cm',
-                                        style: TextStyle(
-                                          fontSize: 20,
-                                          color: h == _selectedHeight
-                                              ? accentColor
-                                              : Colors.black87,
-                                          fontWeight: h == _selectedHeight
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                          ),
-                          const SizedBox(height: 32),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 56,
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _submit,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: accentColor,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                textStyle: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                elevation: 2,
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      height: 24,
-                                      width: 24,
-                                      child: CircularProgressIndicator(
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                                Colors.white),
-                                      ),
-                                    )
-                                  : const Text("Continue"),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
