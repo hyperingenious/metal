@@ -168,6 +168,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             $databaseId: 'unknown',
             $createdAt: '',
             $updatedAt: '',
+            $sequence: 0,  // <-- add this
             $permissions: [],
             data: {'name': 'Unknown'},
           );
