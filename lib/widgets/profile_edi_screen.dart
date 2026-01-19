@@ -598,7 +598,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       );
 
       String fileUrl =
-          'https://fra.cloud.appwrite.io/v1/storage/buckets/${_configService.get('STORAGE_BUCKETID')}/files/${storageFile.$id}/view?project=${_configService.get('PROJECT_ID')}&mode=admin';
+          'https://sgp.cloud.appwrite.io/v1/storage/buckets/${_configService.get('STORAGE_BUCKETID') ?? "686c230b002fb6f5149e"}/files/${storageFile.$id}/view?project=${_configService.get('PROJECT_ID') ?? "696d271a00370d723a6c"}&mode=admin';
 
       final imageDocs = await databases.listDocuments(
         databaseId: _configService.get('DATABASE_ID'),

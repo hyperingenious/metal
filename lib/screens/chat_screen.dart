@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:lushh/appwrite/appwrite.dart';
+import 'package:lushh/services/config_service.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:intl/intl.dart';
@@ -472,7 +473,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     try {
       final jwt = await account.createJWT(), token = jwt.jwt;
       final uri = Uri.parse(
-        'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/chats/${widget.connectionId}/messages',
+        '${ConfigService.baseUrl}/api/v1/chats/${widget.connectionId}/messages',
       );
       final req = await HttpClient().getUrl(uri);
       req.headers.set('Content-Type', 'application/json');
@@ -538,7 +539,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         fileId: ID.unique(),
         file: InputFile.fromPath(path: file.path),
       );
-      return 'https://fra.cloud.appwrite.io/v1/storage/buckets/$storageBucketId/files/${uploaded.$id}/view?project=$projectId&mode=admin';
+      return 'https://sgp.cloud.appwrite.io/v1/storage/buckets/$storageBucketId/files/${uploaded.$id}/view?project=$projectId&mode=admin';
     } catch (e) {
       debugPrint('Error uploading image to Appwrite: $e');
       return null;
@@ -618,7 +619,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       final jwt = await account.createJWT(), token = jwt.jwt;
       final res = await http.post(
         Uri.parse(
-          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/chats/${widget.connectionId}/messages',
+          '${ConfigService.baseUrl}/api/v1/chats/${widget.connectionId}/messages',
         ),
         headers: {
           'Content-Type': 'application/json',
@@ -864,7 +865,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         final token = jwt.jwt;
         final res = await http.post(
           Uri.parse(
-            'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/chats/${widget.connectionId}/propose-date',
+            '${ConfigService.baseUrl}/api/v1/chats/${widget.connectionId}/propose-date',
           ),
           headers: {
             'Content-Type': 'application/json',
@@ -1073,7 +1074,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       final jwt = await account.createJWT(), token = jwt.jwt;
       final res = await http.post(
         Uri.parse(
-          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/chats/${widget.connectionId}/messages',
+          '${ConfigService.baseUrl}/api/v1/chats/${widget.connectionId}/messages',
         ),
         headers: {
           'Content-Type': 'application/json',
@@ -2133,7 +2134,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         try {
           res = await http.post(
             Uri.parse(
-              'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/chats/${widget.connectionId}/respond-date',
+              '${ConfigService.baseUrl}/api/v1/chats/${widget.connectionId}/respond-date',
             ),
             headers: {
               'Content-Type': 'application/json',

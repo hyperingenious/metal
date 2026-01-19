@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:appwrite/appwrite.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../appwrite/appwrite.dart';
+import '../../services/config_service.dart';
 import '../chat_screen.dart';
 
 /// Key for storing cached chats in SharedPreferences
@@ -19,7 +20,7 @@ Future<List<Map<String, dynamic>>> fetchActiveChatsWithLastMessage() async {
 
     // Fetch active chats
     final uri = Uri.parse(
-      'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/chats/active',
+      '${ConfigService.baseUrl}/api/v1/chats/active',
     );
 
     final httpClient = HttpClient();
@@ -245,7 +246,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
       // Call the API endpoint instead of direct Appwrite deletion
       final uri = Uri.parse(
-        'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/chats/remove',
+        '${ConfigService.baseUrl}/api/v1/chats/remove',
       );
 
       final httpClient = HttpClient();

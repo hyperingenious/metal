@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lushh/appwrite/appwrite.dart';
 import 'package:lushh/screens/phone_input_screen.dart';
 import 'package:lushh/services/config_service.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 // Import Appwrite IDs using ConfigService
 final databaseId = ConfigService().get('DATABASE_ID');
@@ -38,6 +39,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Loading state
   bool _loading = true;
   bool _saving = false;
+
+  // Colors
+  static const _primaryColor = Color(0xFF8B4DFF);
+  static const _textPrimary = Color(0xFF1A1A2E);
+  static const _textSecondary = Color(0xFF6B7280);
+  static const _bgColor = Color(0xFFFAFAFC);
 
   @override
   void initState() {
@@ -137,9 +144,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _loading = false;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to load settings: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to load settings: $e")),
+      );
     }
   }
 
@@ -170,9 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (prefeDoc.documents.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              "Could not find your profile data. Please try again.",
-            ),
+            content: Text("Could not find your profile data. Please try again."),
           ),
         );
         setState(() {
@@ -201,17 +206,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _saving = false;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Settings saved!")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Settings saved!")),
+      );
     } on AppwriteException catch (e) {
       setState(() {
         _saving = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Appwrite error: ${e.message ?? 'Unknown error'}"),
-        ),
+        SnackBar(content: Text("Error: ${e.message ?? 'Unknown error'}")),
       );
     } catch (e) {
       setState(() {
@@ -252,7 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to save toggle settings: $e")),
+        SnackBar(content: Text("Failed to save: $e")),
       );
     }
   }
@@ -268,344 +271,366 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Logout failed")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Logout failed")),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = const Color(0xFF6D4B86);
-
-    // Replace MainLoader with centered CircularProgressIndicator
     if (_loading || _saving) {
       return Scaffold(
-        body: Center(child: CircularProgressIndicator(color: accentColor)),
+        backgroundColor: _bgColor,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: _primaryColor,
+            strokeWidth: 2,
+          ),
+        ),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.white, // Set background color to white
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF3B2357)),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        centerTitle: true,
-        title: const Text(
-          'Settings',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
-            color: Color(0xFF3B2357),
-          ),
-        ),
-        actions: [
-          if (_isEdited && !_saving)
-            TextButton(
-              onPressed: _saveSettings,
-              child: const Text(
-                'Save',
-                style: TextStyle(
-                  color: Color(0xFF3B2357),
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-        ],
-      ),
-      body: SingleChildScrollView(
+      backgroundColor: _bgColor,
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Divider(color: Color(0xFFBFA2D9), height: 1, thickness: 1),
-            Padding(
-              padding: const EdgeInsets.only(left: 20, right: 20, top: 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Compact Header
+            _buildHeader(),
+            // Content
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Hide name',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w400,
-                          fontSize: 15,
-                          color: Color(0xFF3B2357),
-                        ),
-                      ),
-                      Switch(
+                      const SizedBox(height: 24),
+                      // Privacy Section
+                      _buildSectionLabel('Privacy'),
+                      const SizedBox(height: 12),
+                      _buildToggleItem(
+                        icon: PhosphorIconsRegular.eyeSlash,
+                        title: 'Hide name',
+                        subtitle: 'Show only first letter',
                         value: _hideName,
                         onChanged: (val) {
-                          setState(() {
-                            _hideName = val;
-                          });
-                          _saveToggleSettings(); // Save immediately when changed
+                          setState(() => _hideName = val);
+                          _saveToggleSettings();
                         },
-                        activeColor: const Color(0xFF3B2357),
-                        inactiveThumbColor: const Color(0xFFBFA2D9),
-                        inactiveTrackColor: const Color(0xFFE5D3F3),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'When enabled, only the first letter of your name will be visible to others',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w400,
-                      fontSize: 13,
-                      color: Color(0xFF6B7280),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Incognito mode',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w400,
-                          fontSize: 15,
-                          color: Color(0xFF3B2357),
-                        ),
-                      ),
-                      Switch(
+                      const SizedBox(height: 8),
+                      _buildToggleItem(
+                        icon: PhosphorIconsRegular.detective,
+                        title: 'Incognito mode',
+                        subtitle: 'Browse anonymously',
                         value: _incognitoMode,
                         onChanged: (val) {
-                          setState(() {
-                            _incognitoMode = val;
-                          });
-                          _saveToggleSettings(); // Save immediately when changed
+                          setState(() => _incognitoMode = val);
+                          _saveToggleSettings();
                         },
-                        activeColor: const Color(0xFF3B2357),
-                        inactiveThumbColor: const Color(0xFFBFA2D9),
-                        inactiveTrackColor: const Color(0xFFE5D3F3),
                       ),
+                      const SizedBox(height: 32),
+                      // Discovery Section
+                      _buildSectionLabel('Discovery'),
+                      const SizedBox(height: 16),
+                      _buildSliderSection(
+                        title: 'Age range',
+                        value: '${_minAge ?? 22} – ${_maxAge ?? 30}',
+                        child: SliderTheme(
+                          data: _sliderTheme,
+                          child: RangeSlider(
+                            values: RangeValues(
+                              (_minAge ?? minAllowedAge).toDouble(),
+                              (_maxAge ?? maxAllowedAge).toDouble(),
+                            ),
+                            min: minAllowedAge.toDouble(),
+                            max: maxAllowedAge.toDouble(),
+                            onChanged: (values) {
+                              setState(() {
+                                _minAge = values.start.round();
+                                _maxAge = values.end.round();
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildSliderSection(
+                        title: 'Maximum distance',
+                        value: '${_maxDistance ?? 10} km',
+                        child: SliderTheme(
+                          data: _sliderTheme,
+                          child: Slider(
+                            value: (_maxDistance ?? minDistance).toDouble(),
+                            min: minDistance.toDouble(),
+                            max: maxDistance.toDouble(),
+                            onChanged: (value) {
+                              setState(() {
+                                _maxDistance = value.round();
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      // Account Section
+                      _buildSectionLabel('Account'),
+                      const SizedBox(height: 12),
+                      _buildActionItem(
+                        icon: PhosphorIconsRegular.signOut,
+                        title: 'Log out',
+                        onTap: _logout,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildActionItem(
+                        icon: PhosphorIconsRegular.trash,
+                        title: 'Delete account',
+                        isDestructive: true,
+                        onTap: () {
+                          // TODO: Implement delete account
+                        },
+                      ),
+                      const SizedBox(height: 40),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Your profile will be hidden from others and you won't appear in recommendations. You can still browse anonymously",
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w400,
-                      fontSize: 13,
-                      color: Color(0xFF6B7280),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-            const SizedBox(height: 40), // More space after toggle switches
-            // Age Range Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "How old are they?",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
-                      color: Color(0xFF3B2357),
-                    ),
-                  ),
-                  const SizedBox(height: 12), // More space after heading
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ), // Slightly more padding
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.grey.withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      "Between ${_minAge ?? ''} and ${_maxAge ?? ''}",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF3B2357),
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ),
-                  SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      activeTrackColor: accentColor,
-                      inactiveTrackColor: accentColor.withOpacity(0.2),
-                      thumbColor: accentColor,
-                      overlayColor: accentColor.withOpacity(0.15),
-                      trackHeight: 2,
-                      thumbShape: const RoundSliderThumbShape(
-                        enabledThumbRadius: 8,
-                      ),
-                    ),
-                    child: RangeSlider(
-                      values: RangeValues(
-                        (_minAge ?? minAllowedAge).toDouble(),
-                        (_maxAge ?? maxAllowedAge).toDouble(),
-                      ),
-                      min: minAllowedAge.toDouble(),
-                      max: maxAllowedAge.toDouble(),
-                      activeColor: accentColor,
-                      inactiveColor: accentColor.withOpacity(0.2),
-                      onChanged: (RangeValues values) {
-                        setState(() {
-                          _minAge = values.start.round();
-                          _maxAge = values.end.round();
-                          if (_minAge! > _maxAge!) {
-                            final temp = _minAge;
-                            _minAge = _maxAge;
-                            _maxAge = temp;
-                          }
-                        });
-                      },
-                    ),
-                  ),
-                ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  SliderThemeData get _sliderTheme => SliderThemeData(
+        activeTrackColor: _primaryColor,
+        inactiveTrackColor: _primaryColor.withOpacity(0.15),
+        thumbColor: _primaryColor,
+        overlayColor: _primaryColor.withOpacity(0.1),
+        trackHeight: 4,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+        rangeThumbShape: const RoundRangeSliderThumbShape(enabledThumbRadius: 10),
+      );
+
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                PhosphorIconsRegular.arrowLeft,
+                color: _textPrimary,
+                size: 20,
               ),
             ),
-            const SizedBox(height: 20), // More space between sections
-            // Max Distance Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "How far away are they?",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
-                      color: Color(0xFF3B2357),
-                    ),
-                  ),
-                  const SizedBox(height: 12), // More space after heading
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ), // Slightly more padding
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.grey.withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      "Up to ${_maxDistance ?? ''} kilometres away",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF3B2357),
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ),
-                  SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      activeTrackColor: accentColor,
-                      inactiveTrackColor: accentColor.withOpacity(0.2),
-                      thumbColor: accentColor,
-                      overlayColor: accentColor.withOpacity(0.15),
-                      trackHeight: 2,
-                      thumbShape: const RoundSliderThumbShape(
-                        enabledThumbRadius: 8,
-                      ),
-                    ),
-                    child: Slider(
-                      value: (_maxDistance ?? minDistance).toDouble(),
-                      min: minDistance.toDouble(),
-                      max: maxDistance.toDouble(),
-                      divisions: maxDistance - minDistance,
-                      onChanged: (value) {
-                        setState(() {
-                          _maxDistance = value.round();
-                        });
-                      },
-                    ),
-                  ),
-                ],
+          ),
+          const Expanded(
+            child: Text(
+              'Settings',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+                fontSize: 17,
+                color: _textPrimary,
+                letterSpacing: -0.3,
               ),
             ),
-            const SizedBox(height: 120), // More space before save button
-            // Remove the Save Button section entirely
-            // Logout Button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+          ),
+          if (_isEdited)
+            GestureDetector(
+              onTap: _saveSettings,
               child: Container(
-                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
+                  color: _primaryColor,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF3B2357), width: 1),
                 ),
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: const Color(0xFF3B2357),
-                    shadowColor: Colors.transparent,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    textStyle: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w500,
-                      fontSize: 16,
-                    ),
+                child: const Text(
+                  'Save',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Colors.white,
                   ),
-                  onPressed: () {
-                    _logout();
-                  },
-                  icon: const Icon(
-                    Icons.logout,
-                    size: 20,
-                    color: Color(0xFF3B2357),
-                  ),
-                  label: const Text('Log out'),
                 ),
               ),
-            ),
-            const SizedBox(height: 20), // Better spacing before delete account
-            Center(
-              child: TextButton(
-                onPressed: () {
-                  // TODO: Implement delete account logic
-                },
-                child: const Text(
-                  'Delete account',
+            )
+          else
+            const SizedBox(width: 52), // Balance the header
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(String label) {
+    return Text(
+      label.toUpperCase(),
+      style: TextStyle(
+        fontFamily: 'Poppins',
+        fontWeight: FontWeight.w600,
+        fontSize: 11,
+        color: _textSecondary.withOpacity(0.7),
+        letterSpacing: 1.2,
+      ),
+    );
+  }
+
+  Widget _buildToggleItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: _primaryColor, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    color: _textPrimary,
+                  ),
+                ),
+                Text(
+                  subtitle,
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.w400,
-                    fontSize: 15,
-                    color: Colors.red,
+                    fontSize: 12,
+                    color: _textSecondary.withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Transform.scale(
+            scale: 0.85,
+            child: Switch(
+              value: value,
+              onChanged: onChanged,
+              activeColor: _primaryColor,
+              activeTrackColor: _primaryColor.withOpacity(0.3),
+              inactiveThumbColor: _textSecondary.withOpacity(0.4),
+              inactiveTrackColor: _textSecondary.withOpacity(0.15),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSliderSection({
+    required String title,
+    required String value,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                  color: _textPrimary,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: _primaryColor,
                   ),
                 ),
               ),
+            ],
+          ),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
+    final color = isDestructive ? const Color(0xFFEF4444) : _textPrimary;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: color,
+              ),
             ),
-            const SizedBox(height: 32), // More bottom padding
+            const Spacer(),
+            Icon(
+              PhosphorIconsRegular.caretRight,
+              color: _textSecondary.withOpacity(0.4),
+              size: 16,
+            ),
           ],
         ),
       ),

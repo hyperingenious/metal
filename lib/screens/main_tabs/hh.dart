@@ -11,6 +11,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lushh/widgets/expandable_prompts.dart';
+import 'package:lushh/services/config_service.dart';
 
 // Environment variables for collections
 const databaseId = String.fromEnvironment('DATABASE_ID');
@@ -511,7 +512,7 @@ class _ExploreScreenState extends State<ExploreScreen>
       }
       final response = await http.get(
         Uri.parse(
-          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/profiles/random-simple',
+          '${ConfigService.baseUrl}/api/v1/profiles/random-simple',
         ),
         headers: {
           'Authorization': 'Bearer $_jwt',
@@ -589,7 +590,7 @@ class _ExploreScreenState extends State<ExploreScreen>
     try {
       final response = await http.get(
         Uri.parse(
-          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/profiles/random-simple',
+          '${ConfigService.baseUrl}/api/v1/profiles/random-simple',
         ),
         headers: {
           'Authorization': 'Bearer $_jwt',
@@ -679,7 +680,7 @@ class _ExploreScreenState extends State<ExploreScreen>
       }
       final response = await http.get(
         Uri.parse(
-          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/profiles/random-simple',
+          '${ConfigService.baseUrl}/api/v1/profiles/random-simple',
         ),
         headers: {
           'Authorization': 'Bearer $_jwt',
@@ -809,7 +810,7 @@ class _ExploreScreenState extends State<ExploreScreen>
 
       final response = await http.post(
         Uri.parse(
-          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/notification/invitations/send',
+          '${ConfigService.baseUrl}/api/v1/notification/invitations/send',
         ),
         headers: {
           'Authorization': 'Bearer $_jwt',

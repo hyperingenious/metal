@@ -537,7 +537,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final jwt = await account.createJWT();
       final token = jwt.jwt;
       final uri = Uri.parse(
-        'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/notification/invitations/accept',
+        '${ConfigService.baseUrl}/api/v1/notification/invitations/accept',
       );
       final httpClient = HttpClient();
       final request = await httpClient.postUrl(uri);
@@ -584,7 +584,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final jwt = await account.createJWT();
       final token = jwt.jwt;
       final uri = Uri.parse(
-        'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/notification/invitations/decline',
+        '${ConfigService.baseUrl}/api/v1/notification/invitations/decline',
       );
       final httpClient = HttpClient();
       final request = await httpClient.postUrl(uri);

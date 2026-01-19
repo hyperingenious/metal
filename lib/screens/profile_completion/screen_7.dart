@@ -10,8 +10,8 @@ import 'package:lushh/services/config_service.dart';
 final databaseId = ConfigService().get('DATABASE_ID');
 final completionStatusCollectionId = ConfigService().get('COMPLETION_STATUS_COLLECTIONID');
 final imagesCollectionId = ConfigService().get('IMAGE_COLLECTIONID');
-final storageBucketId = ConfigService().get('STORAGE_BUCKETID');
-final appwriteProjectId = ConfigService().get('PROJECT_ID');
+final storageBucketId = ConfigService().get('STORAGE_BUCKETID') ?? "686c230b002fb6f5149e";
+final appwriteProjectId = ConfigService().get('PROJECT_ID') ?? "696d271a00370d723a6c";
 
 class AddImagesScreen extends StatefulWidget {
   const AddImagesScreen({super.key});
@@ -93,7 +93,7 @@ class _AddImagesScreenState extends State<AddImagesScreen> {
         );
 
         String url =
-            'https://fra.cloud.appwrite.io/v1/storage/buckets/$storageBucketId/files/${storageFile.$id}/view?project=$appwriteProjectId&mode=admin';
+            'https://sgp.cloud.appwrite.io/v1/storage/buckets/$storageBucketId/files/${storageFile.$id}/view?project=$appwriteProjectId&mode=admin';
         imageUrls.add(url);
       }
 

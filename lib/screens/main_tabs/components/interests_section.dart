@@ -8,23 +8,8 @@ class InterestsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-        border: Border.all(
-          color: Colors.grey.withOpacity(0.1),
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -76,14 +61,11 @@ class InterestsSection extends StatelessWidget {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            const Color(0xFF8B4DFF).withOpacity(0.1),
-                            const Color(0xFFA855FF).withOpacity(0.1),
+                            const Color(0xFF8B4DFF).withOpacity(0.15),
+                            const Color(0xFFA855FF).withOpacity(0.15),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0xFF8B4DFF).withOpacity(0.2),
-                        ),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         hobbyName.isNotEmpty
@@ -99,35 +81,37 @@ class InterestsSection extends StatelessWidget {
                     );
                   }).toList(),
                 )
-              : Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8F6FA),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFF8B4DFF).withOpacity(0.1),
+              : Row(
+                  children: [
+                    Icon(
+                      PhosphorIconsRegular.smiley,
+                      color: const Color(0xFF8B4DFF).withOpacity(0.6),
+                      size: 20,
                     ),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(
-                        PhosphorIconsRegular.smiley,
-                        color: Color(0xFF8B4DFF),
-                        size: 20,
+                    const SizedBox(width: 8),
+                    Text(
+                      "Interests coming soon...",
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                        color: const Color(0xFF8B4DFF).withOpacity(0.7),
                       ),
-                      SizedBox(width: 8),
-                      Text(
-                        "Interests coming soon...",
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14,
-                          color: Color(0xFF8B4DFF),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+          const SizedBox(height: 16),
+          Container(
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF8B4DFF).withOpacity(0.2),
+                  const Color(0xFF8B4DFF).withOpacity(0.05),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

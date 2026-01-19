@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:lushh/appwrite/appwrite.dart';
-import 'package:lushh/screens/main_tabs/components/explore_app_bar.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -12,6 +11,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lushh/widgets/expandable_prompts.dart';
 import 'package:lushh/services/config_service.dart';
+import 'package:lushh/screens/home_screen.dart';
 import 'package:lushh/screens/main_tabs/components/bio_section.dart';
 import 'package:lushh/screens/main_tabs/components/interests_section.dart';
 import 'package:lushh/screens/main_tabs/components/details_section.dart';
@@ -67,6 +67,11 @@ class _ExploreScreenState extends State<ExploreScreen>
 
   // Scroll controller for scrolling to top
   final ScrollController _scrollController = ScrollController();
+  
+  // For scroll-based visibility
+  double _lastScrollOffset = 0;
+  static const double _scrollThreshold = 15.0;
+  bool _isAppBarVisible = true;
 
   // Use different keys for different OS for native localstorage separation
   static String get _localProfilesKey {
@@ -109,6 +114,9 @@ class _ExploreScreenState extends State<ExploreScreen>
         });
       }
     });
+    
+    // Add scroll listener for hide-on-scroll behavior
+    _scrollController.addListener(_onScrollVisibility);
   }
 
   @override
@@ -126,8 +134,41 @@ class _ExploreScreenState extends State<ExploreScreen>
   @override
   void dispose() {
     _swipeController.dispose();
+    _scrollController.removeListener(_onScrollVisibility);
     _scrollController.dispose();
     super.dispose();
+  }
+  
+  void _onScrollVisibility() {
+    if (!_scrollController.hasClients) return;
+    
+    final scrollVisibility = ScrollVisibilityScope.maybeOf(context);
+    
+    final currentOffset = _scrollController.offset;
+    final delta = currentOffset - _lastScrollOffset;
+    
+    // Only trigger visibility change when crossing threshold
+    if (delta.abs() > _scrollThreshold) {
+      if (delta > 0 && currentOffset > 80) {
+        // Scrolling down - hide bars
+        scrollVisibility?.hide();
+        if (_isAppBarVisible && mounted) {
+          setState(() {
+            _isAppBarVisible = false;
+          });
+        }
+      } else if (delta < 0) {
+        // Scrolling up - show bars
+        scrollVisibility?.show();
+        if (!_isAppBarVisible && mounted) {
+          setState(() {
+            _isAppBarVisible = true;
+          });
+        }
+      }
+      // Update last offset only when threshold crossed
+      _lastScrollOffset = currentOffset;
+    }
   }
 
   /// Robustly fetches JWT and then fetches profiles, always ensuring a fresh JWT is used.
@@ -239,7 +280,7 @@ class _ExploreScreenState extends State<ExploreScreen>
 
       final response = await http.get(
         Uri.parse(
-          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/profiles/random-simple',
+          '${ConfigService.baseUrl}/api/v1/profiles/random-simple',
         ),
         headers: {
           'Authorization': 'Bearer $_jwt',
@@ -312,7 +353,7 @@ class _ExploreScreenState extends State<ExploreScreen>
     try {
       final response = await http.get(
         Uri.parse(
-          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/profiles/random-simple',
+          '${ConfigService.baseUrl}/api/v1/profiles/random-simple',
         ),
         headers: {
           'Authorization': 'Bearer $_jwt',
@@ -402,7 +443,7 @@ class _ExploreScreenState extends State<ExploreScreen>
       }
       final response = await http.get(
         Uri.parse(
-          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/profiles/random-simple',
+          '${ConfigService.baseUrl}/api/v1/profiles/random-simple',
         ),
         headers: {
           'Authorization': 'Bearer $_jwt',
@@ -532,7 +573,7 @@ class _ExploreScreenState extends State<ExploreScreen>
 
       final response = await http.post(
         Uri.parse(
-          'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/notification/invitations/send',
+          '${ConfigService.baseUrl}/api/v1/notification/invitations/send',
         ),
         headers: {
           'Authorization': 'Bearer $_jwt',
@@ -1248,13 +1289,77 @@ class _ExploreScreenState extends State<ExploreScreen>
             child: Column(
               children: [
                 // Modern App Bar
-                ExploreAppBar(
-  canUndo: _profileHistory.isNotEmpty,
-  onUndo: _undoLastSkip,
-  onSettings: () {
-    Navigator.pushNamed(context, '/settings');
-  },
-),
+                Container(
+                  margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF8B4DFF), Color(0xFFA855FF)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'Lushh',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (_profileHistory.isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF8B4DFF).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(
+                              PhosphorIconsRegular.arrowUUpLeft,
+                              color: Color(0xFF8B4DFF),
+                              size: 22,
+                            ),
+                            onPressed: _undoLastSkip,
+                            tooltip: 'Back',
+                          ),
+                        ),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6D4B86).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            PhosphorIconsRegular.gearSix,
+                            color: Color(0xFF6D4B86),
+                            size: 22,
+                          ),
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/settings');
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 // Content
                 Expanded(
                   child: Center(
@@ -1422,94 +1527,17 @@ class _ExploreScreenState extends State<ExploreScreen>
           ),
         ),
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              // Modern App Bar with floating effect
-              Container(
-                margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF8B4DFF), Color(0xFFA855FF)],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'Lushh',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    if (_profileHistory.isNotEmpty)
-                      Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF8B4DFF).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: IconButton(
-                          icon: const Icon(
-                            PhosphorIconsRegular.arrowUUpLeft,
-                            color: Color(0xFF8B4DFF),
-                            size: 22,
-                          ),
-                          onPressed: _undoLastSkip,
-                          tooltip: "Back",
-                        ),
-                      ),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6D4B86).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          PhosphorIconsRegular.gearSix,
-                          color: Color(0xFF6D4B86),
-                          size: 22,
-                        ),
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/settings');
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Main Content
-              Expanded(
+              // Main Content (scrollable, takes full height)
+              Positioned.fill(
                 child: SingleChildScrollView(
                   controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
+                  padding: EdgeInsets.only(
+                    left: 20,
+                    right: 20,
+                    top: _isAppBarVisible ? 80 : 16, // Adjust top padding based on app bar visibility
+                    bottom: 16,
                   ),
                   child: DefaultTextStyle(
                     style: const TextStyle(fontFamily: 'Poppins'),
@@ -1662,6 +1690,94 @@ PrimaryGradientButton(
   onPressed: _sendingInvite ? null : _sendInvite,
 ),
                         const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Floating App Bar (positioned on top)
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                top: _isAppBarVisible ? 12 : -80,
+                left: 20,
+                right: 20,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: _isAppBarVisible ? 1.0 : 0.0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF8B4DFF), Color(0xFFA855FF)],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Lushh',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        if (_profileHistory.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8B4DFF).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(
+                                PhosphorIconsRegular.arrowUUpLeft,
+                                color: Color(0xFF8B4DFF),
+                                size: 22,
+                              ),
+                              onPressed: _undoLastSkip,
+                              tooltip: 'Back',
+                            ),
+                          ),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6D4B86).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(
+                              PhosphorIconsRegular.gearSix,
+                              color: Color(0xFF6D4B86),
+                              size: 22,
+                            ),
+                            onPressed: () {
+                              Navigator.pushNamed(context, '/settings');
+                            },
+                          ),
+                        ),
                       ],
                     ),
                   ),

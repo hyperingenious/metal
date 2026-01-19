@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:lushh/appwrite/appwrite.dart';
 
@@ -7,8 +9,16 @@ class ConfigService {
   factory ConfigService() => _instance;
   ConfigService._internal();
 
-  static const String _configUrl =
-      'https://stormy-brook-18563-016c4b3b4015.herokuapp.com/api/v1/env';
+  static String get baseUrl {
+    try {
+      if (Platform.isAndroid) {
+        return 'http://10.0.2.2:3000';
+      }
+    } catch (_) {}
+    return 'http://localhost:3000';
+  }
+
+  static String get _configUrl => '$baseUrl/api/v1/env';
 
   Map<String, dynamic> _config = {};
   bool variableStatus = false;
@@ -23,22 +33,22 @@ class ConfigService {
       final res = await http.get(
         Uri.parse(_configUrl),
         headers: {'Authorization': 'Bearer $jwt', 'Accept': 'application/json'},
-      );
+      ).timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200) {
         variableStatus = true;
         try {
           _config = jsonDecode(res.body) as Map<String, dynamic>;
+          debugPrint('Config loaded successfully from $_configUrl');
         } catch (e) {
-          throw Exception('Invalid JSON format in config response');
+          debugPrint('Invalid JSON format in config response: $e');
         }
       } else {
-        throw Exception(
-          'Failed to load config. Status code: ${res.statusCode}',
-        );
+        debugPrint('Failed to load config. Status code: ${res.statusCode}');
       }
     } catch (e) {
-      rethrow; // Let caller handle the error
+      debugPrint('Error loading bootstrap config from $_configUrl: $e');
+      // Do not rethrow, let the app use defaults or handle missing config gracefully
     }
   }
 
